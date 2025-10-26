@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useUser, useDoc, useMemoFirebase } from "@/firebase";
-import TopNav from "@/components/ui/TopNav";
+import { DesktopHeader } from "@/components/ui/TopNav";
 import UserAvatar from "@/components/ui/UserAvatar";
 import StatTile from "@/components/ui/StatTile";
 import SectionCard from "@/components/ui/SectionCard";
@@ -28,8 +29,8 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex flex-col min-h-screen">
+         <DesktopHeader pageTitle="Dashboard" />
         <main className="flex-1 max-w-md mx-auto w-full px-4 pb-24 space-y-6">
-          <TopNav pageTitle="Dashboard" />
           <Skeleton className="h-24 w-full" />
           <div className="grid grid-cols-2 gap-4">
             <Skeleton className="h-24 w-full" />
@@ -57,10 +58,10 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <main className="flex-1 max-w-md mx-auto w-full px-4 pb-24 space-y-6">
-        <TopNav pageTitle="Dashboard" />
+       <DesktopHeader pageTitle="Dashboard" />
+      <main className="flex-1 w-full p-4 pb-24 space-y-6 md:p-6">
         
-        <div className="bg-[var(--color-bg-card)] rounded-card border border-white/10 p-4 space-y-4">
+        <div className="bg-[var(--color-bg-card)] rounded-card border border-white/10 p-4 space-y-4 max-w-md mx-auto">
           <div className="flex items-center gap-4">
             <UserAvatar src={user.avatarURL} name={user.displayName} size={48} />
             <div>
@@ -70,14 +71,14 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
           <StatTile label="XP Points" value={user.xp} />
           <StatTile label="Training Streak" value={`${user.trainingStreak}d`} />
           <StatTile label="Win Streak" value={`${user.winStreak}W`} />
           <StatTile label="Home Court" value={user.homeCourt} />
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 max-w-md mx-auto">
           <h3 className="text-lg font-bold text-white/90 font-headline tracking-tight px-1">Quick Actions</h3>
           <div className="space-y-2">
             <SectionCard title="Training Hub" desc="Log your grind, earn XP" href="/training" icon={Dumbbell} />

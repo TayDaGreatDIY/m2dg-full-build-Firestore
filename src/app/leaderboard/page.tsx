@@ -1,7 +1,7 @@
 
 "use client";
 
-import TopNav from "@/components/ui/TopNav";
+import { DesktopHeader } from "@/components/ui/TopNav";
 import LeaderboardList from "@/components/leaderboard/LeaderboardList";
 import { useCollection, useMemoFirebase } from "@/firebase";
 import type { User } from "@/lib/types";
@@ -25,23 +25,24 @@ export default function LeaderboardPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <main className="flex-1 max-w-md mx-auto w-full px-4 pb-24 space-y-6">
-        <TopNav pageTitle="Leaderboard" />
-        
-        <div className="text-center space-y-1">
-            <h2 className="text-2xl font-bold font-headline tracking-tight">Top Ballers</h2>
-            <p className="text-sm text-white/50">Top hoopers. Real grind. Updated live.</p>
-        </div>
+      <DesktopHeader pageTitle="Leaderboard" />
+      <main className="flex-1 w-full p-4 pb-24 space-y-6 md:p-6">
+        <div className="max-w-md mx-auto space-y-6">
+            <div className="text-center space-y-1">
+                <h2 className="text-2xl font-bold font-headline tracking-tight">Top Ballers</h2>
+                <p className="text-sm text-white/50">Top hoopers. Real grind. Updated live.</p>
+            </div>
 
-        {isLoading ? (
-          <div className="space-y-2">
-            {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full" />
-            ))}
-          </div>
-        ) : (
-          <LeaderboardList players={rankedPlayers} />
-        )}
+            {isLoading ? (
+              <div className="space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : (
+              <LeaderboardList players={rankedPlayers} />
+            )}
+        </div>
       </main>
     </div>
   );

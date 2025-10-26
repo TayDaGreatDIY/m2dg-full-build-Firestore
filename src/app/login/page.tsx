@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -37,7 +38,6 @@ export default function LoginPage() {
         userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         const username = email.split('@')[0];
-        // Create a new user document in Firestore
         await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
           displayName: username,
@@ -99,7 +99,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Button onClick={() => handleAuthAction('login')} className="w-full" disabled={isLoading}>
+              <Button onClick={() => handleAuthAction('login')} className="w-full" variant="primary" disabled={isLoading}>
                 {isLoading ? 'Logging In...' : 'Log In'}
               </Button>
               <Button onClick={() => handleAuthAction('signup')} variant="outline" className="w-full" disabled={isLoading}>

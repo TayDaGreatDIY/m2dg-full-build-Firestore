@@ -24,6 +24,11 @@ export default function BottomNav() {
       return null;
   }
 
+  // Also don't render on individual chat pages
+  if (pathname.startsWith('/messages/')) {
+    return null;
+  }
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 h-[calc(60px+env(safe-area-inset-bottom))] bg-[var(--color-bg-card)] border-t border-white/10 md:hidden">
       <div className="max-w-md mx-auto h-full flex justify-between items-start pt-2 px-4 text-white/60">

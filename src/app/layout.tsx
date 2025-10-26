@@ -2,13 +2,23 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import BottomNav from '@/components/ui/BottomNav';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
+import BottomNav from '@/components/ui/BottomNav';
+import { Home, Map, ShieldCheck, Trophy, MessageSquare } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'M2DG - Married 2 Da\' Game',
   description: 'United by passion. Energized by the grind.',
 };
+
+const navItems = [
+  { href: "/dashboard", icon: Home, label: "Home" },
+  { href: "/courts", icon: Map, label: "Courts" },
+  { href: "/challenges", icon: ShieldCheck, label: "Missions" },
+  { href: "/leaderboard", icon: Trophy, label: "Leaders" },
+  { href: "/messages", icon: MessageSquare, label: "Messages" },
+];
 
 export default function RootLayout({
   children,
@@ -24,11 +34,29 @@ export default function RootLayout({
       </head>
       <body className="bg-[var(--color-bg-main)] text-[var(--color-text-main)] antialiased min-h-screen flex flex-col font-body" suppressHydrationWarning>
         <FirebaseClientProvider>
-          <div className="flex-1 flex flex-col">
-            {children}
-          </div>
-          <BottomNav />
-          <Toaster />
+          <SidebarProvider>
+            <Sidebar>
+              <SidebarContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <div className="text-gold font-extrabold text-xl font-headline p-2">🏀 M2DG</div>
+                  </SidebarMenuItem>
+                  {navItems.map((item) => (
+                     <SidebarMenuItem key={item.label}>
+                        <SidebarMenuButton href={item.href} left={<item.icon />}>{item.label}</SidebarMenuButton>
+                     </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarContent>
+            </Sidebar>
+            <SidebarInset>
+                <div className="flex-1 flex flex-col">
+                  {children}
+                </div>
+                <BottomNav />
+                <Toaster />
+            </SidebarInset>
+          </SidebarProvider>
         </FirebaseClientProvider>
       </body>
     </html>
