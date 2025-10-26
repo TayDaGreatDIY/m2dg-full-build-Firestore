@@ -8,6 +8,7 @@ import { useUser, useFirestore } from "@/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useState, useRef } from "react";
+import { moderateContent } from "@/ai/flows/moderate-content-flow";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -100,20 +101,32 @@ export default function TrainingForm() {
       return;
     }
 
-    if (!videoBlob) {
-        toast({ variant: "destructive", title: "No Proof", description: "Please record a video as proof of your session."});
-        return;
-    }
-
     setIsUploading(true);
 
     try {
+      const moderationResult = await moderateContent(values.notes || '');
+      if (!moderationResult.passed) {
+        toast({
+          variant: "destructive",
+          title: "Inappropriate Content Detected",
+          description: "Please revise your notes and try again.",
+        });
+        setIsUploading(false);
+        return;
+      }
+
+      if (!videoBlob) {
+        toast({ variant: "destructive", title: "No Proof", description: "Please record a video as proof of your session."});
+        setIsUploading(false);
+        return;
+    }
+
       const storage = getStorage();
       const newSessionId = user.uid + "_" + Date.now();
-      const videoRef = storageRef(storage, `proof/${user.uid}/${newSessionId}.webm`);
+      const videoFileRef = storageRef(storage, `proof/${user.uid}/${newSessionId}.webm`);
       
-      await uploadBytes(videoRef, videoBlob);
-      const mediaURL = await getDownloadURL(videoRef);
+      await uploadBytes(videoFileRef, videoBlob);
+      const mediaURL = await getDownloadURL(videoFileRef);
 
       await addDoc(collection(firestore, "users", user.uid, "training_sessions"), {
         userId: user.uid,
@@ -127,6 +140,10 @@ export default function TrainingForm() {
       toast({ title: "Session Logged!", description: "Your grind has been recorded and verified." });
       form.reset();
       setVideoBlob(null);
+      if (videoRef.current) {
+        videoRef.current.src = "";
+        videoRef.current.srcObject = null;
+      }
     } catch (error) {
       console.error("Error logging session:", error);
       toast({ variant: "destructive", title: "Error", description: "Could not log your session." });
@@ -134,6 +151,12 @@ export default function TrainingForm() {
         setIsUploading(false);
     }
   }
+
+  const showSubmit = videoBlob && !isUploading;
+  const showRecordingControls = !isRecording && !videoBlob;
+  const showStopRecording = isRecording;
+  const showRetry = videoBlob && !isUploading;
+  const showUploading = isUploading;
 
   return (
     <div className="bg-[var(--color-bg-card)] rounded-card border border-white/10 p-4 space-y-4">
@@ -196,61 +219,50 @@ export default function TrainingForm() {
           />
 
           <div className="space-y-2">
-            <FormLabel className="text-white/70">Proof of Work</FormLabel>
+            <FormLabel className="text-white/70">Show me the grind</FormLabel>
             <div className="bg-background rounded-md aspect-video flex items-center justify-center relative overflow-hidden">
                 <video ref={videoRef} className="w-full h-full object-cover" playsInline autoPlay muted loop={!!videoBlob}></video>
                 {!stream && !videoBlob && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
                         <Camera className="text-white/30" size={48} />
-                        <p className="text-white/50 text-sm mt-2">Record video proof</p>
+                        <p className="text-white/50 text-sm mt-2">Record a clip as proof</p>
                     </div>
                 )}
             </div>
-            <div className="flex gap-2 justify-center">
-                {!stream && !videoBlob && (
+            <div className="flex gap-2 justify-center pt-2">
+                {showRecordingControls && (
                     <Button type="button" variant="outline" onClick={handleStartRecording}>
                         <Video size={16} />
                         Start Recording
                     </Button>
                 )}
-                {isRecording && (
+                {showStopRecording && (
                     <Button type="button" variant="destructive" onClick={handleStopRecording}>
-                        <Video size={16} />
                         Stop Recording
                     </Button>
                 )}
-                {videoBlob && (
-                    <>
-                        <Button type="button" variant="outline" onClick={handleRetry} disabled={isUploading}>
-                            <RotateCw size={16} />
-                            Retry
-                        </Button>
-                        <Button type="submit" disabled={isUploading || form.formState.isSubmitting}>
-                            {isUploading ? (
-                                <>
-                                    <Loader2 size={16} className="animate-spin" />
-                                    Uploading...
-                                </>
-                            ) : (
-                                <>
-                                    <Upload size={16} />
-                                    Upload & Log Session
-                                </>
-                            )}
-                        </Button>
-                    </>
+                {showRetry && (
+                    <Button type="button" variant="outline" onClick={handleRetry} disabled={isUploading}>
+                        <RotateCw size={16} />
+                        Record Again
+                    </Button>
+                )}
+                {showSubmit && (
+                    <Button type="submit" disabled={isUploading || form.formState.isSubmitting}>
+                        <Upload size={16} />
+                        Upload & Log Session
+                    </Button>
+                )}
+                 {showUploading && (
+                    <Button type="button" disabled>
+                        <Loader2 size={16} className="animate-spin" />
+                        Uploading...
+                    </Button>
                 )}
             </div>
           </div>
-          
-          {!videoBlob && (
-            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || isRecording}>
-                {form.formState.isSubmitting ? "Logging..." : "Log Session"}
-            </Button>
-          )}
         </form>
       </Form>
     </div>
   );
 }
-
