@@ -39,44 +39,39 @@ export default function TrainingForm() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
 
-
   useEffect(() => {
-    const getCameraPermission = async () => {
-      try {
-        const cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    // Cleanup function to stop tracks when component unmounts
+    return () => {
+        stream?.getTracks().forEach(track => track.stop());
+    }
+  }, [stream]);
+
+
+  const handleStartRecording = async () => {
+    let cameraStream: MediaStream;
+    try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         setStream(cameraStream);
         setHasCameraPermission(true);
-        if (videoRef.current) {
-          videoRef.current.srcObject = cameraStream;
-        }
-      } catch (error) {
+    } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
         toast({
           variant: 'destructive',
           title: 'Camera Access Denied',
-          description: 'Please enable camera permissions in your browser settings to use this feature.',
+          description: 'Please enable camera permissions in your browser settings to record proof.',
         });
-      }
-    };
-
-    getCameraPermission();
-
-    return () => {
-        stream?.getTracks().forEach(track => track.stop());
+        return;
     }
-  }, []);
-
-
-  const handleStartRecording = () => {
-    if (!stream || !videoRef.current) {
-        toast({ variant: 'destructive', title: "Camera Error", description: "Camera stream is not available." });
+      
+    if (!videoRef.current) {
+        toast({ variant: 'destructive', title: "Camera Error", description: "Video element is not available." });
         return;
     }
     
-    videoRef.current.srcObject = stream;
+    videoRef.current.srcObject = cameraStream;
     
-    const recorder = new MediaRecorder(stream);
+    const recorder = new MediaRecorder(cameraStream);
     mediaRecorderRef.current = recorder;
     const chunks: Blob[] = [];
     
@@ -93,6 +88,8 @@ export default function TrainingForm() {
             videoRef.current.srcObject = null;
             videoRef.current.src = URL.createObjectURL(blob);
         }
+        // Stop all tracks on the stream
+        cameraStream.getTracks().forEach(track => track.stop());
     };
     
     recorder.start();
@@ -106,20 +103,15 @@ export default function TrainingForm() {
     }
   };
   
-  const handleRetry = async () => {
+  const handleRetry = () => {
       setVideoBlob(null);
+      setHasCameraPermission(null);
       if(videoRef.current) {
           videoRef.current.src = "";
           videoRef.current.srcObject = null;
-          try {
-            const cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            setStream(cameraStream);
-            setHasCameraPermission(true);
-            videoRef.current.srcObject = cameraStream;
-          } catch(err) {
-              setHasCameraPermission(false);
-          }
       }
+      stream?.getTracks().forEach(track => track.stop());
+      setStream(null);
   }
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -263,13 +255,7 @@ export default function TrainingForm() {
                         </Alert>
                     </div>
                 )}
-                {hasCameraPermission === null && !videoBlob && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
-                        <Loader2 className="text-white/30 animate-spin" size={48} />
-                        <p className="text-white/50 text-sm mt-2">Accessing Camera...</p>
-                    </div>
-                )}
-                 {!isRecording && !videoBlob && hasCameraPermission && (
+                { hasCameraPermission === null && !videoBlob && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
                         <Camera className="text-white/30" size={48} />
                         <p className="text-white/50 text-sm mt-2">Record a clip as proof</p>
@@ -278,7 +264,7 @@ export default function TrainingForm() {
             </div>
             <div className="flex gap-2 justify-center pt-2">
                 {showRecordingControls && (
-                    <Button type="button" variant="outline" onClick={handleStartRecording} disabled={!hasCameraPermission || isRecording}>
+                    <Button type="button" variant="outline" onClick={handleStartRecording} disabled={isRecording}>
                         <Video size={16} />
                         Start Recording
                     </Button>
@@ -313,3 +299,5 @@ export default function TrainingForm() {
     </div>
   );
 }
+
+    
