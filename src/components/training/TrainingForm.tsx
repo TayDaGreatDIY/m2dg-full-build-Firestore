@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
   location: z.string().min(2, { message: "Location is required." }),
-  workType: z.string({ required_error: "Please select a workout type." }), // Changed from 'type'
+  workType: z.string({ required_error: "Please select a workout type." }),
   notes: z.string().optional(),
 });
 
@@ -39,7 +39,7 @@ export default function TrainingForm() {
     }
 
     try {
-      await addDoc(collection(firestore, "trainingLogs"), {
+      await addDoc(collection(firestore, "users", user.uid, "training_sessions"), {
         userId: user.uid,
         createdAt: serverTimestamp(),
         location: values.location,
@@ -82,7 +82,7 @@ export default function TrainingForm() {
                     <FormControl>
                         <SelectTrigger className="bg-background">
                         <SelectValue placeholder="Select a workout type" />
-                        </SelectTrigger>
+                        </Trigger>
                     </FormControl>
                     <SelectContent>
                         <SelectItem value="Drills">Drills</SelectItem>

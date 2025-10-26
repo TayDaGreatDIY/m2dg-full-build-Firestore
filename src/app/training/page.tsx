@@ -7,7 +7,7 @@ import TrainingForm from "@/components/training/TrainingForm";
 import { useUser, useCollection, useMemoFirebase } from "@/firebase";
 import { useFirestore } from "@/firebase";
 import type { TrainingLog } from "@/lib/types";
-import { collection, query, where, orderBy, limit } from "firebase/firestore";
+import { collection, query, orderBy, limit } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from 'date-fns';
 import { useState, useEffect } from "react";
@@ -19,8 +19,7 @@ export default function TrainingPage() {
   const trainingQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
-      collection(firestore, "trainingLogs"),
-      where("userId", "==", user.uid),
+      collection(firestore, "users", user.uid, "training_sessions"),
       orderBy("createdAt", "desc"),
       limit(5)
     );
