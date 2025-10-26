@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
@@ -7,46 +6,40 @@ import ChatThread from "@/components/messages/ChatThread";
 import UserAvatar from "@/components/ui/UserAvatar";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { doc, getDoc, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import type { Chat, User } from "@/lib/types";
-import { useAuth } from "@/hooks/useAuth";
+import { doc, getDoc } from "firebase/firestore";
+import { useFirestore, useUser, useDoc, useMemoFirebase } from "@/firebase";
+import type { Chat, User as AppUser } from "@/lib/types";
 
 export default function ChatPage() {
   const params = useParams();
   const router = useRouter();
-  const { user: authUser } = useAuth();
+  const { user: authUser } = useUser();
+  const firestore = useFirestore();
   const chatId = params.chatId as string;
   
-  const [chat, setChat] = useState<Chat | null>(null);
-  const [otherUser, setOtherUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const chatDocRef = useMemoFirebase(() => {
+    if (!firestore || !chatId) return null;
+    return doc(firestore, 'chats', chatId);
+  }, [firestore, chatId]);
+
+  const { data: chat, isLoading: isChatLoading } = useDoc<Chat>(chatDocRef);
+
+  const otherUserId = chat?.memberIds.find(id => id !== authUser?.uid);
+  
+  const userDocRef = useMemoFirebase(() => {
+    if (!firestore || !otherUserId) return null;
+    return doc(firestore, 'users', otherUserId);
+  }, [firestore, otherUserId]);
+
+  const { data: otherUser, isLoading: isUserLoading } = useDoc<AppUser>(userDocRef);
+
+  const loading = isChatLoading || isUserLoading;
 
   useEffect(() => {
-    if (!chatId || !authUser) return;
-
-    const chatDocRef = doc(db, 'chats', chatId);
-    const unsubscribe = onSnapshot(chatDocRef, async (docSnap) => {
-      if (docSnap.exists()) {
-        const chatData = { id: docSnap.id, ...docSnap.data() } as Chat;
-        setChat(chatData);
-
-        const otherUserId = chatData.memberIds.find(id => id !== authUser.uid);
-        if (otherUserId) {
-          const userDocRef = doc(db, 'users', otherUserId);
-          const userDocSnap = await getDoc(userDocRef);
-          if (userDocSnap.exists()) {
-            setOtherUser({ uid: userDocSnap.id, ...userDocSnap.data() } as User);
-          }
-        }
-      } else {
-        router.push('/messages');
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [chatId, authUser, router]);
+    if (!isChatLoading && !chat) {
+      router.push('/messages');
+    }
+  }, [isChatLoading, chat, router]);
 
   if (loading) {
     return <div className="flex h-screen max-w-md mx-auto items-center justify-center"><Loader2 className="animate-spin text-primary" size={32} /></div>;

@@ -1,20 +1,31 @@
 
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useUser, useDoc, useMemoFirebase, useAuth } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import UserAvatar from "./UserAvatar";
 import { Button } from "./button";
+import { doc } from "firebase/firestore";
+import { useFirestore } from "@/firebase";
+import type { User as AppUser } from "@/lib/types";
 
 type TopNavProps = {
   pageTitle: string;
 };
 
 export default function TopNav({ pageTitle }: TopNavProps) {
-  const { user, loading } = useAuth();
+  const { user: authUser, isUserLoading } = useUser();
   const router = useRouter();
+  const auth = useAuth();
+  const firestore = useFirestore();
+
+  const userDocRef = useMemoFirebase(() => {
+    if (!firestore || !authUser) return null;
+    return doc(firestore, 'users', authUser.uid);
+  }, [firestore, authUser]);
+
+  const { data: user, isLoading: isUserDocLoading } = useDoc<AppUser>(userDocRef);
 
   const handleLogout = async () => {
     try {
@@ -34,7 +45,7 @@ export default function TopNav({ pageTitle }: TopNavProps) {
         <h1 className="text-lg font-bold tracking-tight text-white/90 font-headline">{pageTitle}</h1>
       </div>
       <div className="flex items-center gap-4">
-        {user && !loading && (
+        {user && !isUserLoading && (
           <>
             <UserAvatar src={user.avatarURL} name={user.displayName} size={32} />
             <Button

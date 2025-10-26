@@ -1,15 +1,18 @@
-
 "use client";
 
 import TopNav from "@/components/ui/TopNav";
 import CourtCard from "@/components/courts/CourtCard";
 import { Button } from "@/components/ui/button";
-import { useCollection } from "@/hooks/useCollection";
+import { useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore } from "@/firebase";
 import type { Court } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { collection } from "firebase/firestore";
 
 export default function CourtsPage() {
-  const { data: courts, loading } = useCollection<Court>('courts');
+  const firestore = useFirestore();
+  const courtsQuery = useMemoFirebase(() => collection(firestore, 'courts'), [firestore]);
+  const { data: courts, isLoading } = useCollection<Court>(courtsQuery);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -24,13 +27,13 @@ export default function CourtsPage() {
         <Button variant="primary" className="w-full">Host a Run</Button>
 
         <div className="space-y-4">
-          {loading ? (
+          {isLoading ? (
             <>
               <Skeleton className="h-48 w-full" />
               <Skeleton className="h-48 w-full" />
               <Skeleton className="h-48 w-full" />
             </>
-          ) : courts.length > 0 ? (
+          ) : courts && courts.length > 0 ? (
             courts.map((court) => (
               <CourtCard key={court.id} court={court} />
             ))

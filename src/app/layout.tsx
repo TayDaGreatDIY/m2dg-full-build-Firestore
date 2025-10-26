@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import BottomNav from '@/components/ui/BottomNav';
-import { AuthProvider } from '@/hooks/useAuth';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
   title: 'M2DG - Married 2 Da\' Game',
@@ -23,13 +23,13 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet" />
       </head>
       <body className="bg-[var(--color-bg-main)] text-[var(--color-text-main)] antialiased min-h-screen flex flex-col font-body" suppressHydrationWarning>
-        <AuthProvider>
+        <FirebaseClientProvider>
           <div className="flex-1 flex flex-col">
             {children}
           </div>
           <BottomNav />
           <Toaster />
-        </AuthProvider>
+        </FirebaseClientProvider>
       </body>
     </html>
   );

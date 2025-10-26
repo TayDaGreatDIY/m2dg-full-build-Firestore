@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Newspaper, Map, Trophy, MessageSquare, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/hooks/useAuth";
+import { useUser } from "@/firebase";
 
 const navItems = [
   { href: "/dashboard", icon: Home, label: "Home" },
@@ -17,10 +17,10 @@ const navItems = [
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const { user, loading } = useAuth();
+  const { user, isUserLoading } = useUser();
 
   // Don't render nav on login page or while loading if no user is determined yet
-  if (pathname === '/login' || (loading && !user)) {
+  if (pathname === '/login' || (isUserLoading && !user)) {
       return null;
   }
 

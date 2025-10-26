@@ -1,11 +1,10 @@
-
 "use client";
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -17,23 +16,38 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
+  const db = useFirestore();
 
   const handleAuthAction = async (action: 'login' | 'signup') => {
     setIsLoading(true);
+    if (!email || !password) {
+      toast({
+        variant: 'destructive',
+        title: 'Authentication Failed',
+        description: 'Please enter both email and password.',
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
       let userCredential;
       if (action === 'signup') {
         userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
+        const username = email.split('@')[0];
         // Create a new user document in Firestore
         await setDoc(doc(db, 'users', user.uid), {
-          displayName: email.split('@')[0],
-          username: email.split('@')[0],
+          uid: user.uid,
+          displayName: username,
+          username: username,
           avatarURL: `https://i.pravatar.cc/150?u=${user.uid}`,
           xp: 0,
           winStreak: 0,
           trainingStreak: 0,
           homeCourt: 'Not Set',
+          city: "Unknown"
         });
         toast({ title: 'Account created!', description: 'Welcome to M2DG.' });
       } else {

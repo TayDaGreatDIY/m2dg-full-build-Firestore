@@ -1,16 +1,29 @@
-
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useUser, useDoc, useMemoFirebase } from "@/firebase";
 import TopNav from "@/components/ui/TopNav";
 import UserAvatar from "@/components/ui/UserAvatar";
 import StatTile from "@/components/ui/StatTile";
 import SectionCard from "@/components/ui/SectionCard";
 import { MapPin, Dumbbell, Trophy, MessageSquare, ShieldCheck, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { doc } from "firebase/firestore";
+import { useFirestore } from "@/firebase";
+import type { User as AppUser } from "@/lib/types";
+
 
 export default function DashboardPage() {
-  const { user, loading } = useAuth();
+  const { user: authUser, isUserLoading } = useUser();
+  const firestore = useFirestore();
+
+  const userDocRef = useMemoFirebase(() => {
+    if (!firestore || !authUser) return null;
+    return doc(firestore, 'users', authUser.uid);
+  }, [firestore, authUser]);
+
+  const { data: user, isLoading: isUserDocLoading } = useDoc<AppUser>(userDocRef);
+
+  const loading = isUserLoading || isUserDocLoading;
 
   if (loading) {
     return (
@@ -37,7 +50,7 @@ export default function DashboardPage() {
   if (!user) {
     return (
        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="animate-spin text-primary" size={48} />
+          <p>Could not load user profile.</p>
        </div>
     );
   }
