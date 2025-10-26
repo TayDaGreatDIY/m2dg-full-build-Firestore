@@ -56,68 +56,68 @@ export default function TrainingForm() {
 
   return (
     <div className="bg-[var(--color-bg-card)] rounded-card border border-white/10 p-4 space-y-4">
-        <h3 className="font-bold font-headline text-lg">Log a Session</h3>
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                  control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                  <FormItem>
-                      <FormLabel className="text-white/70">Where did you hoop/train?</FormLabel>
-                      <FormControl>
-                      <Input placeholder="e.g., The Cage" {...field} className="bg-background"/>
-                      </FormControl>
-                      <FormMessage />
-                  </FormItem>
-                  )}
-              />
-              <FormField
-                  control={form.control}
-                  name="workType"
-                  render={({ field }) => (
-                  <FormItem>
-                      <FormLabel className="text-white/70">What type of work?</FormLabel>
-                      <Select onValuechange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                          <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select a workout type" />
-                          </Trigger>
-                      </FormControl>
-                      <SelectContent>
-                          <SelectItem value="Drills">Drills</SelectItem>
-                          <SelectItem value="Pickup">Pickup Game</SelectItem>
-                          <SelectItem value="Conditioning">Conditioning</SelectItem>
-                          <SelectItem value="Weights">Weights</SelectItem>
-                          <SelectItem value="Recovery">Recovery</SelectItem>
-                      </SelectContent>
-                      </Select>
-                      <FormMessage />
-                  </FormItem>
-                  )}
-              />
-              <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                  <FormItem>
-                      <FormLabel className="text-white/70">Notes / What you worked on?</FormLabel>
-                      <FormControl>
-                      <Textarea
-                          placeholder="e.g., Worked on my left-hand finishes and off-ball movement."
-                          className="resize-none bg-background"
-                          {...field}
-                      />
-                      </FormControl>
-                      <FormMessage />
-                  </FormItem>
-                  )}
-              />
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? "Logging..." : "Log Session"}
-              </Button>
-            </form>
-        </Form>
+      <h3 className="font-bold font-headline text-lg">Log a Session</h3>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <FormField
+            control={form.control}
+            name="location"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white/70">Where did you hoop/train?</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., The Cage" {...field} className="bg-background"/>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="workType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white/70">What type of work?</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder="Select a workout type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="Drills">Drills</SelectItem>
+                    <SelectItem value="Pickup">Pickup Game</SelectItem>
+                    <SelectItem value="Conditioning">Conditioning</SelectItem>
+                    <SelectItem value="Weights">Weights</SelectItem>
+                    <SelectItem value="Recovery">Recovery</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white/70">Notes / What you worked on?</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="e.g., Worked on my left-hand finishes and off-ball movement."
+                    className="resize-none bg-background"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? "Logging..." : "Log Session"}
+          </Button>
+        </form>
+      </Form>
     </div>
   );
 }
