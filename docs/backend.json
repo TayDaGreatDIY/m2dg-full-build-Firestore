@@ -1,72 +1,358 @@
 {
   "entities": {
-    "UserProfile": {
-      "title": "User Profile",
-      "description": "Represents a user's public profile and game-related stats.",
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
       "type": "object",
+      "description": "Represents a user in the M2DG application.",
       "properties": {
-        "uid": {
+        "id": {
           "type": "string",
-          "description": "The user's unique ID."
+          "description": "Unique identifier for the user."
         },
         "displayName": {
           "type": "string",
-          "description": "The user's display name."
+          "description": "User's display name."
         },
         "username": {
           "type": "string",
-          "description": "The user's unique username."
+          "description": "User's username."
         },
-        "avatarURL": {
+        "photoURL": {
           "type": "string",
-          "format": "uri",
-          "description": "URL for the user's avatar image."
+          "description": "URL of the user's profile picture.",
+          "format": "uri"
         },
-        "homeCourt": {
+        "homeCourtId": {
           "type": "string",
-          "description": "The name of the user's primary basketball court."
+          "description": "Reference to Court. (Relationship: User 1:1 Court). The ID of the user's home court."
         },
         "xp": {
           "type": "number",
-          "description": "Experience points earned by the user."
+          "description": "User's experience points."
         },
         "trainingStreak": {
           "type": "number",
-          "description": "Current consecutive days of training."
+          "description": "User's current training streak."
         },
         "winStreak": {
           "type": "number",
-          "description": "Current consecutive game wins."
+          "description": "User's current win streak."
+        },
+        "city": {
+          "type": "string",
+          "description": "User's city."
         }
       },
-      "required": ["uid", "displayName", "username"]
+      "required": [
+        "id",
+        "displayName",
+        "username",
+        "photoURL",
+        "homeCourtId",
+        "xp",
+        "trainingStreak",
+        "winStreak",
+        "city"
+      ]
+    },
+    "FeedPost": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FeedPost",
+      "type": "object",
+      "description": "Represents a post in the community feed.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the feed post."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N FeedPost). The ID of the user who created the post."
+        },
+        "text": {
+          "type": "string",
+          "description": "Content of the feed post."
+        },
+        "courtId": {
+          "type": "string",
+          "description": "Reference to Court. (Relationship: Court 1:N FeedPost). The ID of the court associated with the post."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of when the post was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "text",
+        "courtId",
+        "timestamp"
+      ]
+    },
+    "Court": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Court",
+      "type": "object",
+      "description": "Represents a basketball court.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the court."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the court."
+        },
+        "city": {
+          "type": "string",
+          "description": "City where the court is located."
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status of the court (e.g., 'Runs tonight')."
+        },
+        "img": {
+          "type": "string",
+          "description": "URL of the court's image.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "city",
+        "status",
+        "img"
+      ]
+    },
+    "TrainingSession": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TrainingSession",
+      "type": "object",
+      "description": "Represents a user's training session.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the training session."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N TrainingSession). The ID of the user who performed the training."
+        },
+        "courtId": {
+          "type": "string",
+          "description": "Reference to Court. (Relationship: Court 1:N TrainingSession). The ID of the court where the training took place."
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of training (e.g., Drills, Pickup, Conditioning)."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Notes about the training session."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of when the training session occurred.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "courtId",
+        "type",
+        "notes",
+        "timestamp"
+      ]
+    },
+    "ChatMessage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatMessage",
+      "type": "object",
+      "description": "Represents a message in a chat conversation.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the chat message."
+        },
+        "conversationId": {
+          "type": "string",
+          "description": "Reference to Conversation. (Relationship: Conversation 1:N ChatMessage).  The ID of the conversation the message belongs to."
+        },
+        "fromUserId": {
+          "type": "string",
+          "description": "Reference to User. The ID of the user who sent the message."
+        },
+        "text": {
+          "type": "string",
+          "description": "Content of the chat message."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of when the message was sent.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "conversationId",
+        "fromUserId",
+        "text",
+        "timestamp"
+      ]
+    },
+    "Conversation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Conversation",
+      "type": "object",
+      "description": "Represents a direct message conversation between users.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the conversation."
+        },
+        "memberIds": {
+          "type": "array",
+          "description": "References to Users. The IDs of the users participating in the conversation. (Relationship: User N:N Conversation)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "lastMessage": {
+          "type": "string",
+          "description": "The last message sent in the conversation."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of the last activity in the conversation.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "memberIds",
+        "lastMessage",
+        "timestamp"
+      ]
     }
   },
   "auth": {
-    "providers": ["email-password"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": {
-        "$ref": "#/entities/UserProfile"
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Accessible only to the user themselves.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
       },
-      "description": "Stores the public profile for each user."
-    },
-    "/trainingLogs/{logId}": {
-        "schema": "TrainingLog",
-        "description": "Log of a user's training session."
-    },
-    "/courts/{courtId}": {
-        "schema": "Court",
-        "description": "Information about a basketball court."
-    },
-    "/chats/{chatId}": {
-        "schema": "Chat",
-        "description": "A chat conversation between two or more users."
-    },
-    "/chats/{chatId}/messages/{messageId}": {
-        "schema": "Message",
-        "description": "A single message within a chat."
-    }
+      {
+        "path": "/feed_posts/{postId}",
+        "definition": {
+          "entityName": "FeedPost",
+          "schema": {
+            "$ref": "#/backend/entities/FeedPost"
+          },
+          "description": "Stores community feed posts. Includes denormalized 'userId' and 'courtId' for efficient filtering and authorization.",
+          "params": [
+            {
+              "name": "postId",
+              "description": "The unique identifier of the feed post."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/courts/{courtId}",
+        "definition": {
+          "entityName": "Court",
+          "schema": {
+            "$ref": "#/backend/entities/Court"
+          },
+          "description": "Stores court information. Accessible to all users.",
+          "params": [
+            {
+              "name": "courtId",
+              "description": "The unique identifier of the court."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/training_sessions/{sessionId}",
+        "definition": {
+          "entityName": "TrainingSession",
+          "schema": {
+            "$ref": "#/backend/entities/TrainingSession"
+          },
+          "description": "Stores training sessions for each user. Accessible only to the user themselves.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "sessionId",
+              "description": "The unique identifier of the training session."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/conversations/{conversationId}",
+        "definition": {
+          "entityName": "Conversation",
+          "schema": {
+            "$ref": "#/backend/entities/Conversation"
+          },
+          "description": "Stores direct message conversations.  Includes 'memberIds' array for authorization independence.",
+          "params": [
+            {
+              "name": "conversationId",
+              "description": "The unique identifier of the conversation."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/conversations/{conversationId}/chat_messages/{messageId}",
+        "definition": {
+          "entityName": "ChatMessage",
+          "schema": {
+            "$ref": "#/backend/entities/ChatMessage"
+          },
+          "description": "Stores chat messages within a conversation.  Inherits authorization from the parent 'conversation' document.",
+          "params": [
+            {
+              "name": "conversationId",
+              "description": "The unique identifier of the conversation."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique identifier of the chat message."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to optimize security, scalability, and debuggability, adhering to the principles of Authorization Independence, Clarity of Intent, DBAC, and QAPs. User data is stored in a private collection (`/users/{userId}`), ensuring sole access to each user's information. Feed posts are stored in a global collection (`/feed_posts`) with denormalized `userId` and `courtId` to allow filtering by user or court without requiring `get()` calls in security rules. Courts are stored in a global collection (`/courts`). Training sessions are stored as subcollections of users (`/users/{userId}/training_sessions`), establishing clear ownership. Conversations are stored in a global collection (`/conversations`) with a `memberIds` array, and chat messages are stored in a subcollection (`/conversations/{conversationId}/chat_messages`).\n\n**Authorization Independence:** Achieved by denormalizing authorization data. For instance, while feed posts are associated with a court, there's no dependency on fetching court details to determine authorization. The `userId` on feed posts also enables direct access control based on the posting user without needing to check parent documents. The `conversations` collection uses the `memberIds` array to directly manage access, eliminating the need to `get()` user data for validation. This ensures atomic operations and simplifies security rules.\n\n**QAPs (Rules are not Filters):** The structure supports secure list operations. The segregation of user data and public feed posts allows for different security rules to be applied to each. Listing feed posts is possible without exposing private user data. The `memberIds` array in `conversations` ensures that only members can list messages in a conversation.\n\n**Scalability:** The path-based ownership for user data and training sessions enables efficient querying and scaling, as Firestore can easily shard the data based on user IDs. The global collections for courts and feed posts may require pagination strategies as the data grows, but the flat structure avoids complex nested queries.\n\n**Debuggability:** The explicit structure and naming conventions enhance debuggability. Each entity has a clear location, and the relationships between entities are easily traceable through IDs. Denormalization makes security rules straightforward and easier to reason about, reducing the chances of misconfiguration and security vulnerabilities."
   }
 }
