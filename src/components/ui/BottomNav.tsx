@@ -1,20 +1,28 @@
+
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Newspaper, Map, Trophy, MessageSquare } from "lucide-react";
+import { Home, Newspaper, Map, Trophy, MessageSquare, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { href: "/dashboard", icon: Home, label: "Home" },
-  { href: "/feed", icon: Newspaper, label: "Feed" },
   { href: "/courts", icon: Map, label: "Courts" },
+  { href: "/challenges", icon: ShieldCheck, label: "Missions" },
   { href: "/leaderboard", icon: Trophy, label: "Leaders" },
   { href: "/messages", icon: MessageSquare, label: "Messages" },
 ];
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const { user, loading } = useAuth();
+
+  // Don't render nav on login page or while loading if no user is determined yet
+  if (pathname === '/login' || (loading && !user)) {
+      return null;
+  }
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 h-[calc(60px+env(safe-area-inset-bottom))] bg-[var(--color-bg-card)] border-t border-white/10 md:hidden">

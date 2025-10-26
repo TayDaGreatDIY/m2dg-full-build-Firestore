@@ -1,14 +1,63 @@
+
+import { Timestamp } from "firebase/firestore";
+
 export type User = {
   uid: string;
   displayName: string;
   username: string;
-  photoURL: string;
-  homeCourt: string;
+  avatarURL: string; // Changed from photoURL
   xp: number;
-  trainingStreak: number;
   winStreak: number;
+  trainingStreak: number;
+  homeCourt: string;
 };
 
+export type TrainingLog = {
+  id: string;
+  userId: string;
+  createdAt: Timestamp;
+  location: string;
+  workType: string;
+  notes: string;
+  mediaURL?: string;
+};
+
+export type Chat = {
+  id: string;
+  memberIds: string[];
+  lastMessage: string;
+  lastTimestamp: Timestamp;
+  // This will be enriched client-side
+  otherUser?: {
+    username: string;
+    avatarURL: string;
+  };
+};
+
+export type Message = {
+  id: string;
+  userId: string;
+  text: string;
+  createdAt: Timestamp;
+};
+
+export type Court = {
+  id: string;
+  name: string;
+  city: string;
+  statusTag: string; // Renamed from status
+  img?: string; // Image is optional now
+};
+
+export type Challenge = {
+  id: string;
+  title: string;
+  desc: string;
+  status: 'ACTIVE' | 'COMPLETED' | 'NEW';
+};
+
+
+// These types were for demo data, keeping them for reference if needed but adapting to Firestore
 export type FeedPost = {
   id: string;
   user: string;
@@ -17,21 +66,6 @@ export type FeedPost = {
   court: string;
   ts: string;
   streak?: number;
-};
-
-export type Court = {
-  id: string;
-  name: string;
-  city: string;
-  status: string;
-  img: string;
-};
-
-export type Challenge = {
-  id: string;
-  title: string;
-  desc: string;
-  status: 'ACTIVE' | 'COMPLETED' | 'NEW';
 };
 
 export type LeaderboardEntry = {

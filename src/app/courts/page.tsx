@@ -1,11 +1,16 @@
+
 "use client";
 
 import TopNav from "@/components/ui/TopNav";
 import CourtCard from "@/components/courts/CourtCard";
 import { Button } from "@/components/ui/button";
-import { demoCourts } from "@/lib/demoData";
+import { useCollection } from "@/hooks/useCollection";
+import type { Court } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CourtsPage() {
+  const { data: courts, loading } = useCollection<Court>('courts');
+
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-1 max-w-md mx-auto w-full px-4 pb-24 space-y-6">
@@ -19,9 +24,21 @@ export default function CourtsPage() {
         <Button variant="primary" className="w-full">Host a Run</Button>
 
         <div className="space-y-4">
-          {demoCourts.map((court) => (
-            <CourtCard key={court.id} court={court} />
-          ))}
+          {loading ? (
+            <>
+              <Skeleton className="h-48 w-full" />
+              <Skeleton className="h-48 w-full" />
+              <Skeleton className="h-48 w-full" />
+            </>
+          ) : courts.length > 0 ? (
+            courts.map((court) => (
+              <CourtCard key={court.id} court={court} />
+            ))
+          ) : (
+            <div className="text-center py-10 text-white/50">
+              <p>No courts found.</p>
+            </div>
+          )}
         </div>
       </main>
     </div>

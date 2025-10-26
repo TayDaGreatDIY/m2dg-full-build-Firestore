@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from 'next/image';
@@ -25,9 +26,9 @@ export default function UserAvatar({ src, name, size = 40, className }: UserAvat
       style={{ width: size, height: size }}
     >
       <div className="relative w-full h-full rounded-full ring-2 ring-gold/30 border-2 border-gold/50">
-        <AvatarImage src={src} alt={name || 'User avatar'} className="rounded-full" />
+        {src && <AvatarImage src={src} alt={name || 'User avatar'} className="rounded-full" />}
         <AvatarFallback className="bg-muted text-muted-foreground rounded-full">
-          {initials}
+          {initials.toUpperCase()}
         </AvatarFallback>
       </div>
     </Avatar>

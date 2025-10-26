@@ -1,18 +1,28 @@
+
 "use client";
 
-import { useAuthUser } from "@/hooks/useAuthUser";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import UserAvatar from "./UserAvatar";
+import { Button } from "./button";
 
 type TopNavProps = {
   pageTitle: string;
 };
 
 export default function TopNav({ pageTitle }: TopNavProps) {
-  const { user } = useAuthUser();
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
-  const handleLogout = () => {
-    // In a real app, this would call Firebase sign-out
-    alert("Logged out (demo)");
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
 
   return (
@@ -24,13 +34,19 @@ export default function TopNav({ pageTitle }: TopNavProps) {
         <h1 className="text-lg font-bold tracking-tight text-white/90 font-headline">{pageTitle}</h1>
       </div>
       <div className="flex items-center gap-4">
-        <UserAvatar src={user.photoURL} name={user.displayName} size={32} />
-        <button 
-          onClick={handleLogout}
-          className="text-[11px] bg-white/10 text-white/80 px-2 py-1 rounded-md border border-white/20 hover:bg-white/20"
-        >
-          Log Out
-        </button>
+        {user && !loading && (
+          <>
+            <UserAvatar src={user.avatarURL} name={user.displayName} size={32} />
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              size="sm"
+              className="text-[11px] px-2 py-1"
+            >
+              Log Out
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );

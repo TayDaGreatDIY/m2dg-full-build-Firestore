@@ -1,22 +1,29 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
   location: z.string().min(2, { message: "Location is required." }),
-  type: z.string({ required_error: "Please select a workout type." }),
+  workType: z.string({ required_error: "Please select a workout type." }), // Changed from 'type'
   notes: z.string().optional(),
 });
 
 export default function TrainingForm() {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -25,10 +32,26 @@ export default function TrainingForm() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    alert("Session logged (demo).");
-    form.reset();
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!user) {
+      toast({ variant: "destructive", title: "Not authenticated", description: "You must be logged in to log a session." });
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, "trainingLogs"), {
+        userId: user.uid,
+        createdAt: serverTimestamp(),
+        location: values.location,
+        workType: values.workType,
+        notes: values.notes || "",
+      });
+      toast({ title: "Session Logged!", description: "Your grind has been recorded." });
+      form.reset();
+    } catch (error) {
+      console.error("Error logging session:", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not log your session." });
+    }
   }
 
   return (
@@ -51,7 +74,7 @@ export default function TrainingForm() {
             />
             <FormField
                 control={form.control}
-                name="type"
+                name="workType"
                 render={({ field }) => (
                 <FormItem>
                     <FormLabel className="text-white/70">What type of work?</FormLabel>
@@ -90,7 +113,9 @@ export default function TrainingForm() {
                 </FormItem>
                 )}
             />
-            <Button type="submit" className="w-full">Log Session</Button>
+            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? "Logging..." : "Log Session"}
+            </Button>
             </form>
         </Form>
     </div>

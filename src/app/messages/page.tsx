@@ -1,13 +1,67 @@
+
 "use client";
 
 import TopNav from "@/components/ui/TopNav";
 import { Button } from "@/components/ui/button";
 import ConversationRow from "@/components/messages/ConversationRow";
-import { demoConversations } from "@/lib/demoData";
+import { useAuth } from "@/hooks/useAuth";
+import { useCollection } from "@/hooks/useCollection";
+import type { Chat, User } from "@/lib/types";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { Plus } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useState, useEffect } from "react";
 
 export default function MessagesPage() {
-  const hasConversations = demoConversations.length > 0;
+  const { user } = useAuth();
+  
+  const chatsQuery = user 
+    ? query(collection(db, "chats"), where("memberIds", "array-contains", user.uid))
+    : undefined;
+    
+  const { data: rawChats, loading } = useCollection<Chat>('chats', chatsQuery);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [enrichLoading, setEnrichLoading] = useState(true);
+
+  useEffect(() => {
+    async function enrichChats() {
+      if (rawChats.length === 0 || !user) {
+        setChats([]);
+        setEnrichLoading(false);
+        return;
+      }
+      
+      setEnrichLoading(true);
+      const enriched = await Promise.all(rawChats.map(async (chat) => {
+        const otherUserId = chat.memberIds.find(id => id !== user.uid);
+        if (!otherUserId) return chat;
+
+        const userDocRef = doc(db, 'users', otherUserId);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          const otherUserData = userDocSnap.data() as User;
+          return {
+            ...chat,
+            otherUser: {
+              username: otherUserData.username,
+              avatarURL: otherUserData.avatarURL,
+            }
+          };
+        }
+        return chat;
+      }));
+      setChats(enriched);
+      setEnrichLoading(false);
+    }
+
+    enrichChats();
+  }, [rawChats, user]);
+
+
+  const hasConversations = chats.length > 0;
+  const pageLoading = loading || enrichLoading;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -21,10 +75,16 @@ export default function MessagesPage() {
           </Button>
         </div>
         
-        {hasConversations ? (
+        {pageLoading ? (
           <div className="space-y-3">
-            {demoConversations.map((convo) => (
-              <ConversationRow key={convo.id} conversation={convo} />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        ) : hasConversations ? (
+          <div className="space-y-3">
+            {chats.map((convo) => (
+              convo.otherUser && <ConversationRow key={convo.id} conversation={convo} />
             ))}
           </div>
         ) : (

@@ -1,15 +1,30 @@
+
 "use client";
 
 import TopNav from "@/components/ui/TopNav";
 import TrainingSummary from "@/components/training/TrainingSummary";
 import TrainingForm from "@/components/training/TrainingForm";
+import { useAuth } from "@/hooks/useAuth";
+import { useCollection } from "@/hooks/useCollection";
+import type { TrainingLog } from "@/lib/types";
+import { collection, query, where, orderBy, limit } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatDistanceToNow } from 'date-fns';
 
 export default function TrainingPage() {
-  const recentWork = [
-      "10/25 • Drills @ The Cage • Ball-handling, footwork",
-      "10/24 • Pickup @ Venice • 3 games, worked on defense",
-      "10/23 • Weights • Lower body focus",
-  ];
+  const { user } = useAuth();
+
+  const trainingQuery = user
+    ? query(
+        collection(db, "trainingLogs"),
+        where("userId", "==", user.uid),
+        orderBy("createdAt", "desc"),
+        limit(5)
+      )
+    : undefined;
+
+  const { data: recentWork, loading } = useCollection<TrainingLog>('trainingLogs', trainingQuery);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -21,11 +36,23 @@ export default function TrainingPage() {
 
         <div className="bg-[var(--color-bg-card)] rounded-card border border-white/10 p-4 space-y-3">
             <h3 className="font-bold font-headline text-lg">Recent Work</h3>
-            <ul className="space-y-2 list-disc list-inside text-sm text-white/70">
-                {recentWork.map((work, i) => (
-                    <li key={i}>{work}</li>
-                ))}
-            </ul>
+            {loading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            ) : recentWork.length > 0 ? (
+              <ul className="space-y-2 list-disc list-inside text-sm text-white/70">
+                  {recentWork.map((work) => (
+                      <li key={work.id}>
+                        {formatDistanceToNow(work.createdAt.toDate(), { addSuffix: true })} • {work.workType} @ {work.location} • {work.notes}
+                      </li>
+                  ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-white/50">No recent sessions logged.</p>
+            )}
         </div>
       </main>
     </div>

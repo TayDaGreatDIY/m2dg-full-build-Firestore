@@ -1,42 +1,75 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { useParams } from "next/navigation";
-import type { ChatMessage } from "@/lib/types";
-import { demoChatMessagesById } from "@/lib/demoData";
-import { useAuthUser } from "@/hooks/useAuthUser";
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { Message } from "@/lib/types";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Paperclip, Send } from "lucide-react";
+import { Paperclip, Send, Loader2 } from "lucide-react";
 
-export default function ChatThread() {
-  const params = useParams();
-  const chatId = params.chatId as string;
-  const { user } = useAuthUser();
+type ChatThreadProps = {
+  chatId: string;
+};
+
+export default function ChatThread({ chatId }: ChatThreadProps) {
+  const { user } = useAuth();
   
-  const [messages, setMessages] = useState<ChatMessage[]>(demoChatMessagesById[chatId] || []);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!chatId) return;
+    const messagesQuery = query(
+      collection(db, 'chats', chatId, 'messages'),
+      orderBy('createdAt', 'asc')
+    );
+    const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+      const msgs: Message[] = [];
+      snapshot.forEach(doc => msgs.push({ id: doc.id, ...doc.data() } as Message));
+      setMessages(msgs);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, [chatId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === "") return;
+    if (newMessage.trim() === "" || !user) return;
 
-    const message: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      from: user.username,
-      text: newMessage,
-      timestamp: "Just now",
-    };
+    const messagesColRef = collection(db, 'chats', chatId, 'messages');
+    const chatDocRef = doc(db, 'chats', chatId);
 
-    setMessages([...messages, message]);
-    setNewMessage("");
+    try {
+      await addDoc(messagesColRef, {
+        userId: user.uid,
+        text: newMessage,
+        createdAt: serverTimestamp(),
+      });
+      
+      await updateDoc(chatDocRef, {
+        lastMessage: newMessage,
+        lastTimestamp: serverTimestamp(),
+      });
+
+      setNewMessage("");
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
   };
+  
+  if (loading) {
+    return <div className="flex-1 flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -46,13 +79,13 @@ export default function ChatThread() {
             key={msg.id}
             className={cn(
               "flex items-end gap-2",
-              msg.from === user.username ? "justify-end" : "justify-start"
+              msg.userId === user?.uid ? "justify-end" : "justify-start"
             )}
           >
             <div
               className={cn(
                 "max-w-xs md:max-w-md rounded-2xl px-4 py-2",
-                msg.from === user.username
+                msg.userId === user?.uid
                   ? "bg-orange text-black rounded-br-none"
                   : "bg-white/10 text-white rounded-bl-none"
               )}
@@ -75,8 +108,9 @@ export default function ChatThread() {
             placeholder="Type a message..."
             className="flex-1 bg-background"
             autoComplete="off"
+            disabled={!user}
           />
-          <Button variant="primary" size="icon" type="submit">
+          <Button variant="primary" size="icon" type="submit" disabled={!newMessage.trim() || !user}>
             <Send />
           </Button>
         </form>

@@ -1,14 +1,46 @@
+
 "use client";
 
-import { useAuthUser } from "@/hooks/useAuthUser";
+import { useAuth } from "@/hooks/useAuth";
 import TopNav from "@/components/ui/TopNav";
 import UserAvatar from "@/components/ui/UserAvatar";
 import StatTile from "@/components/ui/StatTile";
 import SectionCard from "@/components/ui/SectionCard";
-import { MapPin, Dumbbell, Trophy, MessageSquare, ShieldCheck } from "lucide-react";
+import { MapPin, Dumbbell, Trophy, MessageSquare, ShieldCheck, Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
-  const { user } = useAuthUser();
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <main className="flex-1 max-w-md mx-auto w-full px-4 pb-24 space-y-6">
+          <TopNav pageTitle="Dashboard" />
+          <Skeleton className="h-24 w-full" />
+          <div className="grid grid-cols-2 gap-4">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+       <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="animate-spin text-primary" size={48} />
+       </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -17,7 +49,7 @@ export default function DashboardPage() {
         
         <div className="bg-[var(--color-bg-card)] rounded-card border border-white/10 p-4 space-y-4">
           <div className="flex items-center gap-4">
-            <UserAvatar src={user.photoURL} name={user.displayName} size={48} />
+            <UserAvatar src={user.avatarURL} name={user.displayName} size={48} />
             <div>
               <h2 className="text-lg font-bold font-headline">Welcome, {user.displayName}</h2>
               <p className="text-sm text-white/50">@{user.username}</p>
