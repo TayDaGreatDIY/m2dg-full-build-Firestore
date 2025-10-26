@@ -33,7 +33,7 @@ export default function TrainingForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!user) {
+    if (!user || !firestore) {
       toast({ variant: "destructive", title: "Not authenticated", description: "You must be logged in to log a session." });
       return;
     }
