@@ -4,8 +4,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useAuth } from "@/hooks/useAuth";
-import { db } from "@/lib/firebase";
+import { useUser, useFirestore } from "@/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,8 @@ const formSchema = z.object({
 });
 
 export default function TrainingForm() {
-  const { user } = useAuth();
+  const { user } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -39,7 +39,7 @@ export default function TrainingForm() {
     }
 
     try {
-      await addDoc(collection(db, "trainingLogs"), {
+      await addDoc(collection(firestore, "trainingLogs"), {
         userId: user.uid,
         createdAt: serverTimestamp(),
         location: values.location,

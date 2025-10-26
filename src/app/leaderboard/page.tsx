@@ -40,4 +40,9 @@ export default function LeaderboardPage() {
             ))}
           </div>
         ) : (
-          
+          <LeaderboardList players={rankedPlayers} />
+        )}
+      </main>
+    </div>
+  );
+}

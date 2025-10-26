@@ -4,28 +4,29 @@
 import TopNav from "@/components/ui/TopNav";
 import TrainingSummary from "@/components/training/TrainingSummary";
 import TrainingForm from "@/components/training/TrainingForm";
-import { useAuth } from "@/hooks/useAuth";
-import { useCollection } from "@/hooks/useCollection";
+import { useUser, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore } from "@/firebase";
 import type { TrainingLog } from "@/lib/types";
 import { collection, query, where, orderBy, limit } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from 'date-fns';
 import { useState, useEffect } from "react";
 
 export default function TrainingPage() {
-  const { user } = useAuth();
+  const { user } = useUser();
+  const firestore = useFirestore();
 
-  const trainingQuery = user
-    ? query(
-        collection(db, "trainingLogs"),
-        where("userId", "==", user.uid),
-        orderBy("createdAt", "desc"),
-        limit(5)
-      )
-    : undefined;
+  const trainingQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(
+      collection(firestore, "trainingLogs"),
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc"),
+      limit(5)
+    );
+  }, [user, firestore]);
 
-  const { data: recentWork, loading } = useCollection<TrainingLog>('trainingLogs', trainingQuery);
+  const { data: recentWork, isLoading } = useCollection<TrainingLog>(trainingQuery);
 
   // Client-side state to avoid hydration mismatch
   const [formattedWork, setFormattedWork] = useState<any[]>([]);
@@ -49,7 +50,7 @@ export default function TrainingPage() {
 
         <div className="bg-[var(--color-bg-card)] rounded-card border border-white/10 p-4 space-y-3">
             <h3 className="font-bold font-headline text-lg">Recent Work</h3>
-            {loading ? (
+            {isLoading ? (
               <div className="space-y-2">
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-3/4" />

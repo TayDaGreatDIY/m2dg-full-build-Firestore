@@ -1,11 +1,24 @@
 
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useUser, useDoc, useMemoFirebase } from "@/firebase";
+import { useFirestore } from "@/firebase";
+import type { User as AppUser } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { doc } from "firebase/firestore";
 
 export default function TrainingSummary() {
-  const { user, loading } = useAuth();
+  const { user: authUser, isUserLoading: isAuthLoading } = useUser();
+  const firestore = useFirestore();
+
+  const userDocRef = useMemoFirebase(() => {
+    if (!firestore || !authUser) return null;
+    return doc(firestore, 'users', authUser.uid);
+  }, [firestore, authUser]);
+
+  const { data: user, isLoading: isUserDocLoading } = useDoc<AppUser>(userDocRef);
+
+  const loading = isAuthLoading || isUserDocLoading;
 
   if (loading || !user) {
     return (

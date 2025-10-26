@@ -3,9 +3,8 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import type { Message } from "@/lib/types";
-import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,8 @@ type ChatThreadProps = {
 };
 
 export default function ChatThread({ chatId }: ChatThreadProps) {
-  const { user } = useAuth();
+  const { user } = useUser();
+  const firestore = useFirestore();
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,9 +24,9 @@ export default function ChatThread({ chatId }: ChatThreadProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!chatId) return;
+    if (!chatId || !firestore) return;
     const messagesQuery = query(
-      collection(db, 'chats', chatId, 'messages'),
+      collection(firestore, 'chats', chatId, 'messages'),
       orderBy('createdAt', 'asc')
     );
     const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
@@ -36,7 +36,7 @@ export default function ChatThread({ chatId }: ChatThreadProps) {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [chatId]);
+  }, [chatId, firestore]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -44,10 +44,10 @@ export default function ChatThread({ chatId }: ChatThreadProps) {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === "" || !user) return;
+    if (newMessage.trim() === "" || !user || !firestore) return;
 
-    const messagesColRef = collection(db, 'chats', chatId, 'messages');
-    const chatDocRef = doc(db, 'chats', chatId);
+    const messagesColRef = collection(firestore, 'chats', chatId, 'messages');
+    const chatDocRef = doc(firestore, 'chats', chatId);
 
     try {
       await addDoc(messagesColRef, {

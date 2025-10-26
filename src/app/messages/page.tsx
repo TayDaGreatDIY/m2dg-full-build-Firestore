@@ -4,29 +4,29 @@
 import TopNav from "@/components/ui/TopNav";
 import { Button } from "@/components/ui/button";
 import ConversationRow from "@/components/messages/ConversationRow";
-import { useAuth } from "@/hooks/useAuth";
-import { useCollection } from "@/hooks/useCollection";
+import { useUser, useCollection, useMemoFirebase, useFirestore } from "@/firebase";
 import type { Chat, User } from "@/lib/types";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect } from "react";
 
 export default function MessagesPage() {
-  const { user } = useAuth();
+  const { user } = useUser();
+  const firestore = useFirestore();
   
-  const chatsQuery = user 
-    ? query(collection(db, "chats"), where("memberIds", "array-contains", user.uid))
-    : undefined;
+  const chatsQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(collection(firestore, "chats"), where("memberIds", "array-contains", user.uid));
+  }, [user, firestore]);
     
-  const { data: rawChats, loading } = useCollection<Chat>('chats', chatsQuery);
+  const { data: rawChats, isLoading } = useCollection<Chat>(chatsQuery);
   const [chats, setChats] = useState<Chat[]>([]);
   const [enrichLoading, setEnrichLoading] = useState(true);
 
   useEffect(() => {
     async function enrichChats() {
-      if (rawChats.length === 0 || !user) {
+      if (!firestore || !user || !rawChats) {
         setChats([]);
         setEnrichLoading(false);
         return;
@@ -37,7 +37,7 @@ export default function MessagesPage() {
         const otherUserId = chat.memberIds.find(id => id !== user.uid);
         if (!otherUserId) return chat;
 
-        const userDocRef = doc(db, 'users', otherUserId);
+        const userDocRef = doc(firestore, 'users', otherUserId);
         const userDocSnap = await getDoc(userDocRef);
 
         if (userDocSnap.exists()) {
@@ -56,12 +56,14 @@ export default function MessagesPage() {
       setEnrichLoading(false);
     }
 
-    enrichChats();
-  }, [rawChats, user]);
+    if (rawChats) {
+        enrichChats();
+    }
+  }, [rawChats, user, firestore]);
 
 
   const hasConversations = chats.length > 0;
-  const pageLoading = loading || enrichLoading;
+  const pageLoading = isLoading || enrichLoading;
 
   return (
     <div className="flex flex-col min-h-screen">
