@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's public profile and game-related stats.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The user's unique ID."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "username": {
+          "type": "string",
+          "description": "The user's unique username."
+        },
+        "avatarURL": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL for the user's avatar image."
+        },
+        "homeCourt": {
+          "type": "string",
+          "description": "The name of the user's primary basketball court."
+        },
+        "xp": {
+          "type": "number",
+          "description": "Experience points earned by the user."
+        },
+        "trainingStreak": {
+          "type": "number",
+          "description": "Current consecutive days of training."
+        },
+        "winStreak": {
+          "type": "number",
+          "description": "Current consecutive game wins."
+        }
+      },
+      "required": ["uid", "displayName", "username"]
+    }
+  },
+  "auth": {
+    "providers": ["email-password"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Stores the public profile for each user."
+    },
+    "/trainingLogs/{logId}": {
+        "schema": "TrainingLog",
+        "description": "Log of a user's training session."
+    },
+    "/courts/{courtId}": {
+        "schema": "Court",
+        "description": "Information about a basketball court."
+    },
+    "/chats/{chatId}": {
+        "schema": "Chat",
+        "description": "A chat conversation between two or more users."
+    },
+    "/chats/{chatId}/messages/{messageId}": {
+        "schema": "Message",
+        "description": "A single message within a chat."
+    }
+  }
+}
