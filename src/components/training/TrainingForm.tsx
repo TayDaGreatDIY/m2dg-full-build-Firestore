@@ -6,6 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useUser, useFirestore } from "@/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { useState, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -13,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { Camera, Video, Upload, RotateCw, Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   location: z.string().min(2, { message: "Location is required." }),
@@ -24,6 +27,14 @@ export default function TrainingForm() {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  
+  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -32,25 +43,95 @@ export default function TrainingForm() {
     },
   });
 
+  const handleStartRecording = async () => {
+    if (!videoRef.current) return;
+    try {
+        const cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        setStream(cameraStream);
+        videoRef.current.srcObject = cameraStream;
+        
+        const recorder = new MediaRecorder(cameraStream);
+        mediaRecorderRef.current = recorder;
+        const chunks: Blob[] = [];
+        
+        recorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                chunks.push(event.data);
+            }
+        };
+        
+        recorder.onstop = () => {
+            const blob = new Blob(chunks, { type: "video/webm" });
+            setVideoBlob(blob);
+            videoRef.current!.srcObject = null;
+            videoRef.current!.src = URL.createObjectURL(blob);
+        };
+        
+        recorder.start();
+        setIsRecording(true);
+    } catch(err) {
+        console.error("Error accessing camera:", err);
+        toast({ variant: 'destructive', title: "Camera Error", description: "Could not access camera. Please check permissions." });
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if(stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      setStream(null);
+    }
+  };
+  
+  const handleRetry = () => {
+      setVideoBlob(null);
+      if(videoRef.current) {
+          videoRef.current.src = "";
+          videoRef.current.srcObject = null;
+      }
+  }
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user || !firestore) {
       toast({ variant: "destructive", title: "Not authenticated", description: "You must be logged in to log a session." });
       return;
     }
 
+    if (!videoBlob) {
+        toast({ variant: "destructive", title: "No Proof", description: "Please record a video as proof of your session."});
+        return;
+    }
+
+    setIsUploading(true);
+
     try {
+      const storage = getStorage();
+      const newSessionId = user.uid + "_" + Date.now();
+      const videoRef = storageRef(storage, `proof/${user.uid}/${newSessionId}.webm`);
+      
+      await uploadBytes(videoRef, videoBlob);
+      const mediaURL = await getDownloadURL(videoRef);
+
       await addDoc(collection(firestore, "users", user.uid, "training_sessions"), {
         userId: user.uid,
         createdAt: serverTimestamp(),
         location: values.location,
         workType: values.workType,
         notes: values.notes || "",
+        mediaURL: mediaURL,
       });
-      toast({ title: "Session Logged!", description: "Your grind has been recorded." });
+
+      toast({ title: "Session Logged!", description: "Your grind has been recorded and verified." });
       form.reset();
+      setVideoBlob(null);
     } catch (error) {
       console.error("Error logging session:", error);
       toast({ variant: "destructive", title: "Error", description: "Could not log your session." });
+    } finally {
+        setIsUploading(false);
     }
   }
 
@@ -113,11 +194,63 @@ export default function TrainingForm() {
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? "Logging..." : "Log Session"}
-          </Button>
+
+          <div className="space-y-2">
+            <FormLabel className="text-white/70">Proof of Work</FormLabel>
+            <div className="bg-background rounded-md aspect-video flex items-center justify-center relative overflow-hidden">
+                <video ref={videoRef} className="w-full h-full object-cover" playsInline autoPlay muted loop={!!videoBlob}></video>
+                {!stream && !videoBlob && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
+                        <Camera className="text-white/30" size={48} />
+                        <p className="text-white/50 text-sm mt-2">Record video proof</p>
+                    </div>
+                )}
+            </div>
+            <div className="flex gap-2 justify-center">
+                {!stream && !videoBlob && (
+                    <Button type="button" variant="outline" onClick={handleStartRecording}>
+                        <Video size={16} />
+                        Start Recording
+                    </Button>
+                )}
+                {isRecording && (
+                    <Button type="button" variant="destructive" onClick={handleStopRecording}>
+                        <Video size={16} />
+                        Stop Recording
+                    </Button>
+                )}
+                {videoBlob && (
+                    <>
+                        <Button type="button" variant="outline" onClick={handleRetry} disabled={isUploading}>
+                            <RotateCw size={16} />
+                            Retry
+                        </Button>
+                        <Button type="submit" disabled={isUploading || form.formState.isSubmitting}>
+                            {isUploading ? (
+                                <>
+                                    <Loader2 size={16} className="animate-spin" />
+                                    Uploading...
+                                </>
+                            ) : (
+                                <>
+                                    <Upload size={16} />
+                                    Upload & Log Session
+                                </>
+                            )}
+                        </Button>
+                    </>
+                )}
+            </div>
+          </div>
+          
+          {!videoBlob && (
+            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || isRecording}>
+                {form.formState.isSubmitting ? "Logging..." : "Log Session"}
+            </Button>
+          )}
         </form>
       </Form>
     </div>
   );
 }
+

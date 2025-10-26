@@ -11,6 +11,8 @@ import { collection, query, orderBy, limit } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from 'date-fns';
 import { useState, useEffect } from "react";
+import Link from "next/link";
+import { PlayCircle } from "lucide-react";
 
 export default function TrainingPage() {
   const { user } = useUser();
@@ -56,10 +58,19 @@ export default function TrainingPage() {
                     <Skeleton className="h-4 w-full" />
                 </div>
                 ) : formattedWork.length > 0 ? (
-                <ul className="space-y-2 list-disc list-inside text-sm text-white/70">
+                <ul className="space-y-3 text-sm text-white/70">
                     {formattedWork.map((work) => (
-                        <li key={work.id}>
-                            {work.timeAgo} • {work.workType} @ {work.location} • {work.notes}
+                        <li key={work.id} className="flex justify-between items-center">
+                            <div>
+                                <span className="font-semibold">{work.workType}</span> @ {work.location}
+                                <p className="text-xs text-white/50">{work.timeAgo}</p>
+                                {work.notes && <p className="text-white/90 text-sm mt-1 pl-2 border-l-2 border-orange/20">{work.notes}</p>}
+                            </div>
+                            {work.mediaURL && (
+                                <Link href={work.mediaURL} target="_blank">
+                                    <PlayCircle className="text-orange hover:text-gold transition-colors" />
+                                </Link>
+                            )}
                         </li>
                     ))}
                 </ul>
@@ -72,3 +83,4 @@ export default function TrainingPage() {
     </div>
   );
 }
+
