@@ -5,12 +5,21 @@ import type { Chat } from "@/lib/types";
 import UserAvatar from "@/components/ui/UserAvatar";
 import Link from "next/link";
 import { formatDistanceToNow } from 'date-fns';
+import { useState, useEffect } from "react";
 
 type ConversationRowProps = {
   conversation: Chat;
 };
 
 export default function ConversationRow({ conversation }: ConversationRowProps) {
+  const [timeAgo, setTimeAgo] = useState('');
+
+  useEffect(() => {
+    if (conversation.lastTimestamp) {
+      setTimeAgo(formatDistanceToNow(conversation.lastTimestamp.toDate(), { addSuffix: true }));
+    }
+  }, [conversation.lastTimestamp]);
+
   if (!conversation.otherUser) return null;
 
   return (
@@ -21,7 +30,7 @@ export default function ConversationRow({ conversation }: ConversationRowProps) 
           <div className="flex justify-between items-baseline">
             <p className="font-bold text-sm">@{conversation.otherUser.username}</p>
             <p className="text-xs text-white/40">
-              {conversation.lastTimestamp ? formatDistanceToNow(conversation.lastTimestamp.toDate(), { addSuffix: true }) : ''}
+              {timeAgo}
             </p>
           </div>
           <p className="text-sm text-white/60 truncate">{conversation.lastMessage}</p>

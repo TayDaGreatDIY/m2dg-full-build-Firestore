@@ -11,6 +11,7 @@ import { collection, query, where, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from 'date-fns';
+import { useState, useEffect } from "react";
 
 export default function TrainingPage() {
   const { user } = useAuth();
@@ -25,6 +26,18 @@ export default function TrainingPage() {
     : undefined;
 
   const { data: recentWork, loading } = useCollection<TrainingLog>('trainingLogs', trainingQuery);
+
+  // Client-side state to avoid hydration mismatch
+  const [formattedWork, setFormattedWork] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (recentWork) {
+      setFormattedWork(recentWork.map(work => ({
+        ...work,
+        timeAgo: work.createdAt ? formatDistanceToNow(work.createdAt.toDate(), { addSuffix: true }) : ''
+      })));
+    }
+  }, [recentWork]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -42,11 +55,11 @@ export default function TrainingPage() {
                 <Skeleton className="h-4 w-3/4" />
                 <Skeleton className="h-4 w-full" />
               </div>
-            ) : recentWork.length > 0 ? (
+            ) : formattedWork.length > 0 ? (
               <ul className="space-y-2 list-disc list-inside text-sm text-white/70">
-                  {recentWork.map((work) => (
+                  {formattedWork.map((work) => (
                       <li key={work.id}>
-                        {formatDistanceToNow(work.createdAt.toDate(), { addSuffix: true })} • {work.workType} @ {work.location} • {work.notes}
+                        {work.timeAgo} • {work.workType} @ {work.location} • {work.notes}
                       </li>
                   ))}
               </ul>
