@@ -25,7 +25,7 @@ export const storeProducts: Product[] = [
         description: 'Improve hand positioning, stance, and speed with the ball for better control and faster moves.',
         imageUrl: 'https://picsum.photos/seed/dribble-trainer/600/400',
         imageHint: 'basketball training',
-        amazonUrl: 'https://www.amazon.com/dp/B019C09A1C',
+        amazonUrl: 'https://www.amazon.com/SKLZ-Dribble-Adjustable-Basketball-Trainer/dp/B00EB6OGN6/ref=sr_1_1?crid=1VNA6CLYZCQ4H&dib=eyJ2IjoiMSJ9.vDrvPNxt3uCkcBiAOf90-EIulINpAaceclyyjJ4SINPqx38U7ndae7wtSzycmNO85rP-sF_DKA9y756SJPGvK3YLUoj89yTVqOCO89CIZWavJBEqp4kwySxohgoc73l8BlXMsQmEsUMB3A8cLZ3JQlbysWKew8H4CASximY_nUmexTBVgv6rR0F9jAokV_xqHHG5gPOH-3gcaGKX5d_buL9f56LRpeu5xEz7rBVzK9c.ED-6hFIeiDmCn4yW6pgG1MpRbWLz0BIxld2oQnAI9MM&dib_tag=se&keywords=SKLZ+Dribble+Stick+Basketball+Trainer&qid=1761534279&s=audible&sprefix=sklz+dribble+stick+basketball+trainer%2Caudible%2C1337&sr=1-1',
         price: '$29.99'
     },
     {
