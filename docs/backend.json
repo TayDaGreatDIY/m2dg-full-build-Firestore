@@ -114,6 +114,10 @@
           "type": "string",
           "description": "City where the court is located."
         },
+        "address": {
+            "type": "string",
+            "description": "The full address of the court."
+        },
         "status": {
           "type": "string",
           "description": "Current status of the court (e.g., 'Runs tonight')."
@@ -128,6 +132,7 @@
         "id",
         "name",
         "city",
+        "address",
         "status",
         "img"
       ]
@@ -242,6 +247,33 @@
         "lastMessage",
         "timestamp"
       ]
+    },
+    "Run": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Run",
+      "type": "object",
+      "description": "Represents a scheduled pickup game or 'run' at a court.",
+      "properties": {
+        "id": { "type": "string" },
+        "hostUid": { "type": "string" },
+        "hostName": { "type": "string" },
+        "time": { "type": "string" },
+        "note": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "hostUid", "hostName", "time", "createdAt"]
+    },
+    "CheckIn": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CheckIn",
+      "type": "object",
+      "description": "Represents a user checking into a court.",
+      "properties": {
+        "userId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "user": { "$ref": "#/backend/entities/User" }
+      },
+      "required": ["userId", "timestamp"]
     }
   },
   "auth": {
@@ -297,6 +329,30 @@
               "name": "courtId",
               "description": "The unique identifier of the court."
             }
+          ]
+        }
+      },
+       {
+        "path": "/courts/{courtId}/runs/{runId}",
+        "definition": {
+          "entityName": "Run",
+          "schema": { "$ref": "#/backend/entities/Run" },
+          "description": "Stores upcoming runs for each court.",
+          "params": [
+            {"name": "courtId", "description": "The court's unique ID."},
+            {"name": "runId", "description": "The run's unique ID."}
+          ]
+        }
+      },
+      {
+        "path": "/courts/{courtId}/checkins/{checkinId}",
+        "definition": {
+          "entityName": "CheckIn",
+          "schema": { "$ref": "#/backend/entities/CheckIn" },
+          "description": "Stores user check-ins for a court.",
+          "params": [
+            {"name": "courtId", "description": "The court's unique ID."},
+            {"name": "checkinId", "description": "The user's ID acts as the check-in ID."}
           ]
         }
       },
@@ -357,6 +413,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to optimize security, scalability, and debuggability, adhering to the principles of Authorization Independence, Clarity of Intent, DBAC, and QAPs. User data is stored in a private collection (`/users/{userId}`), ensuring sole access to each user's information. Feed posts are stored in a global collection (`/feed_posts`) with denormalized `userId` and `courtId` to allow filtering by user or court without requiring `get()` calls in security rules. Courts are stored in a global collection (`/courts`). Training sessions are stored as subcollections of users (`/users/{userId}/training_sessions`), establishing clear ownership. Conversations are stored in a global collection (`/conversations`) with a `memberIds` array, and chat messages are stored in a subcollection (`/conversations/{conversationId}/chat_messages`).\n\n**Authorization Independence:** Achieved by denormalizing authorization data. For instance, while feed posts are associated with a court, there's no dependency on fetching court details to determine authorization. The `userId` on feed posts also enables direct access control based on the posting user without needing to check parent documents. The `conversations` collection uses the `memberIds` array to directly manage access, eliminating the need to `get()` user data for validation. This ensures atomic operations and simplifies security rules.\n\n**QAPs (Rules are not Filters):** The structure supports secure list operations. The segregation of user data and public feed posts allows for different security rules to be applied to each. Listing feed posts is possible without exposing private user data. The `memberIds` array in `conversations` ensures that only members can list messages in a conversation.\n\n**Scalability:** The path-based ownership for user data and training sessions enables efficient querying and scaling, as Firestore can easily shard the data based on user IDs. The global collections for courts and feed posts may require pagination strategies as the data grows, but the flat structure avoids complex nested queries.\n\n**Debuggability:** The explicit structure and naming conventions enhance debuggability. Each entity has a clear location, and the relationships between entities are easily traceable through IDs. Denormalization makes security rules straightforward and easier to reason about, reducing the chances of misconfiguration and security vulnerabilities."
+    "reasoning": "The Firestore structure is designed to optimize security, scalability, and debuggability, adhering to the principles of Authorization Independence, Clarity of Intent, DBAC, and QAPs. User data is stored in a private collection (`/users/{userId}`), ensuring sole access to each user's information. Feed posts are stored in a global collection (`/feed_posts`) with denormalized `userId` and `courtId` to allow filtering by user or court without requiring `get()` calls in security rules. Courts are stored in a global collection (`/courts`). Runs and Check-ins are stored as subcollections of courts to establish clear ownership and allow efficient querying for court-specific activities. Training sessions are stored as subcollections of users (`/users/{userId}/training_sessions`), establishing clear ownership. Conversations are stored in a global collection (`/conversations`) with a `memberIds` array, and chat messages are stored in a subcollection (`/conversations/{conversationId}/chat_messages`).\n\n**Authorization Independence:** Achieved by denormalizing authorization data. The `memberIds` array in `conversations` directly manages access. The `hostUid` on a `run` document clearly defines ownership.\n\n**QAPs (Rules are not Filters):** The structure supports secure list operations. Listing runs or check-ins for a specific court is efficient and secure as it only requires querying a specific subcollection path.\n\n**Scalability:** The path-based ownership for user data, training sessions, runs, and check-ins enables efficient querying and scaling, as Firestore can easily shard the data based on user and court IDs.\n\n**Debuggability:** The explicit structure and naming conventions enhance debuggability. Each entity has a clear location, and the relationships between entities are easily traceable."
   }
 }

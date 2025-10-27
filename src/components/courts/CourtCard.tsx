@@ -1,10 +1,10 @@
-
 "use client";
 
 import Image from "next/image";
 import type { Court } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 type CourtCardProps = {
   court: Court;
@@ -25,7 +25,9 @@ export default function CourtCard({ court }: CourtCardProps) {
       </div>
       <div className="p-3 flex justify-between items-center">
         <Badge variant="gold">{court.statusTag}</Badge>
-        <Button variant="outline" size="sm">Details</Button>
+        <Link href={`/courts/${court.id}`}>
+            <Button variant="outline" size="sm">Details</Button>
+        </Link>
       </div>
     </div>
   );

@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { collection, writeBatch, getDocs, doc, limit, query } from "firebase/firestore";
 import { courtData } from "@/lib/courtData";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useRouter } from "next/navigation";
+
 
 const seedInitialCourts = async (db: any) => {
     console.log("Checking if courts need to be seeded...");
@@ -29,7 +31,11 @@ const seedInitialCourts = async (db: any) => {
     
     courtData.forEach(court => {
         const courtRef = doc(db, "courts", court.id);
-        batch.set(courtRef, court);
+        const courtWithAddress = {
+          ...court,
+          address: court.address || `${court.name}, ${court.city}` // Fallback address
+        }
+        batch.set(courtRef, courtWithAddress);
     });
 
     try {
@@ -42,6 +48,7 @@ const seedInitialCourts = async (db: any) => {
 
 export default function CourtsPage() {
   const firestore = useFirestore();
+  const router = useRouter();
   const [selectedCity, setSelectedCity] = useState("All Cities");
 
   useEffect(() => {
@@ -79,7 +86,6 @@ export default function CourtsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="primary" className="whitespace-nowrap">Host a Run</Button>
           </div>
 
           <div className="space-y-4">
