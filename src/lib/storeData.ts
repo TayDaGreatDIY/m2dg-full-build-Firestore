@@ -30,12 +30,12 @@ export const storeProducts: Product[] = [
     },
     {
         id: 'the-shot-creator',
-        name: 'Shot Tracker',
-        description: 'Automatically tracks your shot attempts, makes, and misses, providing real-time feedback.',
+        name: 'Swish Hoop Basketball Trainer',
+        description: 'Basketball training aid that helps improve shooting accuracy by providing instant feedback.',
         imageUrl: 'https://picsum.photos/seed/shot-tracker/600/400',
-        imageHint: 'basketball tech',
-        amazonUrl: 'https://www.amazon.com/dp/B073155M3B',
-        price: '$149.99'
+        imageHint: 'basketball training aid',
+        amazonUrl: 'https://www.amazon.com/Swish-Hoop-Basketball-telescoping-installaton/dp/B07QW3WT6J/ref=sr_1_1?crid=H1HL640FSVKM&dib=eyJ2IjoiMSJ9.499hpNB68Pi6jQXaE9yNx3B4RHX2gY_TsqF5ItEO8duS924ACQSKlRN57-bAzVR-apYbVHfHD2kNo9yqi2oyu34VtlnIZw4TPvPNKTauGKt7hjo9mA1oaIWm7D3l665lYs9JRdKbGEzZeKsRP26YyvkV3k6vYg0Gxu5CkV7BjKKZbHNqbV5DfZ6axj9lzAyHd9KYWmPYeYj8qQ1U2kfRfWxalXlGBRuhgO7n7qe3rHs.ZJo1uA7KWG-v_3RZLja9BjQxjszjV_6IQGhZklSMF9g&dib_tag=se&keywords=basketball+Shot+Tracker&qid=1761534480&s=audible&sprefix=basketball+shot+tracker%2Caudible%2C142&sr=1-1',
+        price: '$49.99'
     },
     {
         id: 'pro-mini-hoop',
