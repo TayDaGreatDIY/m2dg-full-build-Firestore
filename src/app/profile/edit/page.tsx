@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useUser, useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
 import { DesktopHeader } from '@/components/ui/TopNav';
@@ -20,7 +20,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { Loader2, UploadCloud } from 'lucide-react';
 import type { User, Court } from '@/lib/types';
-import { collection } from 'firebase/firestore';
 
 const profileFormSchema = z.object({
   displayName: z.string().min(2, "Display name must be at least 2 characters."),
@@ -60,17 +59,16 @@ export default function EditProfilePage() {
   });
 
   useEffect(() => {
-    if (user && courts) {
-        const userCourt = courts.find(c => c.id === user.homeCourtId);
+    if (user) {
         form.reset({
             displayName: user.displayName || '',
             username: user.username || '',
             aboutMe: user.aboutMe || '',
-            homeCourtId: userCourt ? userCourt.id : '',
+            homeCourtId: user.homeCourtId || '',
         });
         setAvatarPreview(user.avatarURL);
     }
-  }, [user, courts, form]);
+  }, [user, form]);
 
 
   useEffect(() => {
@@ -114,7 +112,7 @@ export default function EditProfilePage() {
       if (avatarFile) {
         const avatarStorageRef = storageRef(storage, `avatars/${authUser.uid}/${avatarFile.name}`);
         const uploadResult = await uploadBytes(avatarStorageRef, avatarFile);
-        dataToUpdate.avatarURL = await getDownloadURL(uploadResult.ref);
+        dataToUpdate.avatarURL = await getDownloadURL(avatarStorageRef);
       }
 
       await updateDoc(userDocRef, dataToUpdate);
