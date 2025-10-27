@@ -23,6 +23,10 @@
           "description": "URL of the user's profile picture.",
           "format": "uri"
         },
+        "aboutMe": {
+          "type": "string",
+          "description": "A short bio about the user."
+        },
         "homeCourtId": {
           "type": "string",
           "description": "Reference to Court. (Relationship: User 1:1 Court). The ID of the user's home court."

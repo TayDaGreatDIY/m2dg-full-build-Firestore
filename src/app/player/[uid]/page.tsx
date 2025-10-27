@@ -9,7 +9,7 @@ import UserAvatar from '@/components/ui/UserAvatar';
 import StatTile from '@/components/ui/StatTile';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, PlayCircle, Loader2 } from 'lucide-react';
+import { MessageSquare, PlayCircle, Loader2, Edit } from 'lucide-react';
 import type { User, TrainingLog } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useState, useEffect } from 'react';
@@ -93,6 +93,7 @@ export default function PlayerProfilePage() {
   };
 
   const isLoading = isPlayerLoading || isTrainingLoading;
+  const isOwnProfile = currentUser?.uid === uid;
 
   if (isLoading) {
     return (
@@ -145,12 +146,24 @@ export default function PlayerProfilePage() {
                 <p className="text-base text-white/50">@{player.username}</p>
               </div>
             </div>
-            {currentUser && currentUser.uid !== player.uid && (
-              <Button onClick={handleSendMessage} disabled={isCreatingChat} className="w-full">
-                {isCreatingChat ? <Loader2 className="animate-spin" /> : <MessageSquare size={16} />}
-                Message {player.displayName}
-              </Button>
+            {player.aboutMe && (
+                <div className="text-sm text-white/90 border-l-2 border-orange/30 pl-3">
+                    <p>{player.aboutMe}</p>
+                </div>
             )}
+            <div className="flex gap-2">
+                {isOwnProfile ? (
+                     <Button onClick={() => router.push('/profile/edit')} className="w-full">
+                        <Edit size={16} />
+                        Edit Profile
+                    </Button>
+                ) : (
+                    <Button onClick={handleSendMessage} disabled={isCreatingChat} className="w-full">
+                        {isCreatingChat ? <Loader2 className="animate-spin" /> : <MessageSquare size={16} />}
+                        Message {player.displayName}
+                    </Button>
+                )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

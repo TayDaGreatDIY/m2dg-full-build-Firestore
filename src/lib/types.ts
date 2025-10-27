@@ -7,6 +7,7 @@ export type User = {
   displayName: string;
   username: string;
   avatarURL: string; // Changed from photoURL
+  aboutMe?: string;
   xp: number;
   winStreak: number;
   trainingStreak: number;
