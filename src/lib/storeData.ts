@@ -16,7 +16,7 @@ export const storeProducts: Product[] = [
         description: 'The #1 indoor game ball in America. The standard for performance and innovation.',
         imageUrl: 'https://picsum.photos/seed/basketball/600/400',
         imageHint: 'basketball product',
-        amazonUrl: 'https://www.amazon.com/dp/B085F4ZJ6B',
+        amazonUrl: 'https://www.amazon.com/Wilson%C2%AE-Evolution%C2%AE-Indoor-Basketball-EA/dp/B0009KMXWY/ref=sr_1_1?crid=1GQMABW6OGPZM&dib=eyJ2IjoiMSJ9.c03zVigZxOaiHdK8f5OKWI3l8Dl_wx79N2YVE43b8nzynXFarGLevwY2B-cINVo-taT1XxaqTHCRoAi_3CUghuuZIfl2S7p66qB6hgtVSm_cFeYhikUxIIiKQj0g2zjgIitITTQzK6BLrkPdhb_Z1LgJzUyvCDpHWbbAxfUTKYG1UcgvZ25NYPpUPWmQit4cGpA2-Vlo8DGpzwsamIa2aAZWLka5zGRpJvJcUjyUWiw.m1jXlwisfE1UsdjNTTW0deOavGWcB3UbVYaQkx6Slu8&dib_tag=se&keywords=wilson%2Bevolution%2Bbasketball&qid=1761534079&s=audible&sprefix=wilson%2Bevolution%2Bbasketball%2Caudible%2C180&sr=1-1&th=1',
         price: '$79.95'
     },
     {
