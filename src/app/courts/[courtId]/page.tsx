@@ -54,7 +54,6 @@ export default function CourtDetailPage() {
     if (!currentUser || !courtId || !firestore) return;
     const checkinRef = doc(firestore, 'courts', courtId, 'checkins', currentUser.uid);
     try {
-      const userDocRef = doc(firestore, 'users', currentUser.uid);
       // We are creating a sub-document with user info for easy display
       await setDoc(checkinRef, {
         userId: currentUser.uid,
@@ -117,89 +116,91 @@ export default function CourtDetailPage() {
 
   return (
     <>
-    <HostRunDialog
-        isOpen={isHostRunOpen}
-        onOpenChange={setIsHostRunOpen}
-        courtId={courtId}
-        courtName={court.name}
-    />
-    <div className="flex flex-col min-h-screen bg-background">
-      <DesktopHeader pageTitle={court.name} />
-      <main className="flex-1 pb-24">
-        <div className="relative h-48 w-full">
-            <Image src={court.img || 'https://picsum.photos/seed/court/800/400'} alt={court.name} fill style={{ objectFit: 'cover' }} className="opacity-50" />
-            <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
-        </div>
+      <HostRunDialog
+          isOpen={isHostRunOpen}
+          onOpenChange={setIsHostRunOpen}
+          courtId={courtId}
+          courtName={court.name}
+      />
+      <div className="flex flex-col min-h-screen bg-background">
+        <DesktopHeader pageTitle={court.name} />
+        <main className="flex-1 pb-24">
+          <div className="relative h-48 w-full">
+              <Image src={court.img || 'https://picsum.photos/seed/court/800/400'} alt={court.name} fill style={{ objectFit: 'cover' }} className="opacity-50" />
+              <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
+          </div>
 
-        <div className="max-w-lg mx-auto w-full p-4 -mt-16 relative space-y-6">
-            <div className="bg-card/80 backdrop-blur-sm p-4 rounded-xl border border-white/10 shadow-lg">
-                <Badge variant="gold" className="mb-2">{court.statusTag}</Badge>
-                <h1 className="text-2xl font-bold font-headline text-white">{court.name}</h1>
-                <div className="flex items-center gap-2 text-sm text-white/60 mt-1">
-                    <MapPin size={14} />
-                    <p>{court.address}</p>
-                </div>
-            </div>
+          <div className="max-w-lg mx-auto w-full p-4 -mt-16 relative space-y-6">
+              <div className="bg-card/80 backdrop-blur-sm p-4 rounded-xl border border-white/10 shadow-lg">
+                  <Badge variant="gold" className="mb-2">{court.statusTag}</Badge>
+                  <h1 className="text-2xl font-bold font-headline text-white">{court.name}</h1>
+                  <div className="flex items-center gap-2 text-sm text-white/60 mt-1">
+                      <MapPin size={14} />
+                      <p>{court.address}</p>
+                  </div>
+              </div>
 
-            <div className="grid grid-cols-2 gap-2">
-                {isCheckedIn ? (
-                     <Button variant="outline" onClick={handleCheckOut}>
-                        <LogOut size={16}/>
-                        Check Out
-                    </Button>
-                ) : (
-                    <Button variant="primary" onClick={handleCheckIn} disabled={!currentUser}>
-                        <Users size={16}/>
-                        Check In
-                    </Button>
-                )}
-                <Button variant="secondary" onClick={() => setIsHostRunOpen(true)} disabled={!currentUser}>
-                   <PlusCircle size={16}/>
-                   Host a Run
-                </Button>
-            </div>
+              <div className="grid grid-cols-2 gap-2">
+                  {isCheckedIn ? (
+                       <Button variant="outline" onClick={handleCheckOut}>
+                          <LogOut size={16}/>
+                          Check Out
+                      </Button>
+                  ) : (
+                      <Button variant="primary" onClick={handleCheckIn} disabled={!currentUser}>
+                          <Users size={16}/>
+                          Check In
+                      </Button>
+                  )}
+                  <Button variant="secondary" onClick={() => setIsHostRunOpen(true)} disabled={!currentUser}>
+                     <PlusCircle size={16}/>
+                     Host a Run
+                  </Button>
+              </div>
 
-            <div className="bg-card p-4 rounded-xl border border-white/10">
-                <h2 className="font-bold font-headline text-lg mb-3">Who's Here ({checkins?.length || 0})</h2>
-                {checkins && checkins.length > 0 ? (
-                    <div className="flex flex-wrap gap-3">
-                        {checkins.map(c => (
-                            <UserAvatar 
-                                key={c.id} 
-                                src={c.user?.avatarURL} 
-                                name={c.user?.displayName || 'Unknown'} 
-                                size={40}
-                            />
-                        ))}
-                    </div>
-                ) : (
-                    <p className="text-sm text-white/50">No one is checked in yet. Be the first!</p>
-                )}
-            </div>
-            
-            <div className="bg-card p-4 rounded-xl border border-white/10">
-                <h2 className="font-bold font-headline text-lg mb-3">Upcoming Runs ({runs?.length || 0})</h2>
-                 {runs && runs.length > 0 ? (
-                    <div className="space-y-3">
-                        {runs.map(run => (
-                            <div key={run.id} className="bg-background/50 p-3 rounded-lg">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="font-bold text-orange">{run.time}</p>
-                                        <p className="text-sm text-white/60">Hosted by @{run.hostName}</p>
-                                    </div>
-                                    <p className="text-xs text-white/40">{run.createdAt ? format(run.createdAt.toDate(), 'P') : ''}</p>
-                                </div>
-                                {run.note && <p className="text-sm text-white/90 mt-2 border-l-2 border-orange/20 pl-2">{run.note}</p>}
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <p className="text-sm text-white/50">No runs hosted yet. Start one!</p>
-                )}
-            </div>
+              <div className="bg-card p-4 rounded-xl border border-white/10">
+                  <h2 className="font-bold font-headline text-lg mb-3">Who's Here ({checkins?.length || 0})</h2>
+                  {checkins && checkins.length > 0 ? (
+                      <div className="flex flex-wrap gap-3">
+                          {checkins.map(c => (
+                              <UserAvatar 
+                                  key={c.id} 
+                                  src={c.user?.avatarURL} 
+                                  name={c.user?.displayName || 'Unknown'} 
+                                  size={40}
+                              />
+                          ))}
+                      </div>
+                  ) : (
+                      <p className="text-sm text-white/50">No one is checked in yet. Be the first!</p>
+                  )}
+              </div>
+              
+              <div className="bg-card p-4 rounded-xl border border-white/10">
+                  <h2 className="font-bold font-headline text-lg mb-3">Upcoming Runs ({runs?.length || 0})</h2>
+                   {runs && runs.length > 0 ? (
+                      <div className="space-y-3">
+                          {runs.map(run => (
+                              <div key={run.id} className="bg-background/50 p-3 rounded-lg">
+                                  <div className="flex justify-between items-start">
+                                      <div>
+                                          <p className="font-bold text-orange">{run.time}</p>
+                                          <p className="text-sm text-white/60">Hosted by @{run.hostName}</p>
+                                      </div>
+                                      <p className="text-xs text-white/40">{run.createdAt ? format(run.createdAt.toDate(), 'P') : ''}</p>
+                                  </div>
+                                  {run.note && <p className="text-sm text-white/90 mt-2 border-l-2 border-orange/20 pl-2">{run.note}</p>}
+                              </div>
+                          ))}
+                      </div>
+                  ) : (
+                      <p className="text-sm text-white/50">No runs hosted yet. Start one!</p>
+                  )}
+              </div>
 
-        </div>
-      </main>
-    </div>
-    </
+          </div>
+        </main>
+      </div>
+    </>
+  );
+}
