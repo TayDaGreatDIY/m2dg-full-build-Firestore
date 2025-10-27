@@ -55,7 +55,8 @@ export default function AiTrainerPage() {
       });
 
       if (!response.ok) {
-        throw new Error('The AI coach is unavailable right now. Please try again later.');
+        const errorData = await response.json().catch(() => ({ reply: 'An unknown error occurred.' }));
+        throw new Error(errorData.reply || 'The AI coach is unavailable right now. Please try again later.');
       }
       
       const data = await response.json();
