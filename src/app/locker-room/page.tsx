@@ -8,6 +8,10 @@ import { storeProducts, Product } from "@/lib/storeData";
 import { ShoppingCart } from "lucide-react";
 
 const ProductCard = ({ product }: { product: Product }) => {
+  const handleViewOnAmazon = () => {
+    window.open(product.amazonUrl, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div className="bg-card rounded-card border border-white/10 overflow-hidden flex flex-col">
       <div className="relative h-48 w-full">
@@ -24,11 +28,9 @@ const ProductCard = ({ product }: { product: Product }) => {
         <p className="text-sm text-white/60 flex-1">{product.description}</p>
         <div className="flex justify-between items-center mt-4">
             <p className="text-xl font-bold text-gold font-headline">{product.price}</p>
-            <a href={product.amazonUrl} target="_blank" rel="noopener noreferrer">
-              <Button variant="primary">
-                <ShoppingCart size={16} /> View on Amazon
-              </Button>
-            </a>
+            <Button variant="primary" onClick={handleViewOnAmazon}>
+              <ShoppingCart size={16} /> View on Amazon
+            </Button>
         </div>
       </div>
     </div>
