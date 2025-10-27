@@ -10,14 +10,8 @@ type CourtCardProps = {
   court: Court;
 };
 
-const placeholderImages: { [key: string]: string } = {
-  'The Cage': 'https://images.unsplash.com/photo-1579303384242-4b65219b52b8?q=80&w=800&h=400&fit=crop',
-  'Venice Beach': 'https://images.unsplash.com/photo-1606833958043-a403a55806b8?q=80&w=800&h=400&fit=crop',
-  'Goat Park': 'https://images.unsplash.com/photo-1561335979-c5c559816e87?q=80&w=800&h=400&fit=crop',
-};
-
 export default function CourtCard({ court }: CourtCardProps) {
-  const imageUrl = court.img || placeholderImages[court.name] || 'https://picsum.photos/seed/court/800/400';
+  const imageUrl = court.img || 'https://picsum.photos/seed/court/800/400';
   
   return (
     <div className="bg-[var(--color-bg-card)] rounded-card border border-white/10 overflow-hidden">
