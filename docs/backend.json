@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -167,6 +168,10 @@
           "type": "string",
           "description": "Timestamp of when the training session occurred.",
           "format": "date-time"
+        },
+        "youtubeConsent": {
+          "type": "boolean",
+          "description": "Indicates if the user consents to their video being used on YouTube."
         }
       },
       "required": [
@@ -445,4 +450,3 @@
     "reasoning": "The Firestore structure is designed to optimize security, scalability, and debuggability, adhering to the principles of Authorization Independence, Clarity of Intent, DBAC, and QAPs. User data is stored in a private collection (`/users/{userId}`), ensuring sole access to each user's information. Notifications are a subcollection of users for clear ownership. Feed posts are stored in a global collection (`/feed_posts`) with denormalized `userId` and `courtId` to allow filtering by user or court without requiring `get()` calls in security rules. Courts are stored in a global collection (`/courts`). Runs and Check-ins are stored as subcollections of courts to establish clear ownership and allow efficient querying for court-specific activities. Training sessions are stored as subcollections of users (`/users/{userId}/training_sessions`), establishing clear ownership. Conversations are stored in a global collection (`/chats`) with a `memberIds` array, and chat messages are stored in a subcollection (`/chats/{chatId}/messages`).\n\n**Authorization Independence:** Achieved by denormalizing authorization data. The `memberIds` array in `chats` directly manages access. The `hostUid` on a `run` document clearly defines ownership.\n\n**QAPs (Rules are not Filters):** The structure supports secure list operations. Listing runs or check-ins for a specific court is efficient and secure as it only requires querying a specific subcollection path.\n\n**Scalability:** The path-based ownership for user data, training sessions, runs, and check-ins enables efficient querying and scaling, as Firestore can easily shard the data based on user and court IDs.\n\n**Debuggability:** The explicit structure and naming conventions enhance debuggability. Each entity has a clear location, and the relationships between entities are easily traceable."
   }
 }
-    

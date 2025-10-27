@@ -24,6 +24,7 @@ export type TrainingLog = {
   workType: string;
   notes: string;
   mediaURL?: string;
+  youtubeConsent?: boolean;
 };
 
 export type Chat = {
@@ -132,5 +133,3 @@ export type ChatMessage = {
   text: string;
   timestamp: string;
 };
-
-    

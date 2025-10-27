@@ -39,9 +39,9 @@ const moderateContentFlow = ai.defineFlow(
     try {
       // Use generate for content moderation by checking for a blocked response
       await ai.generate({
-        prompt: `Is the following text appropriate for a fitness app? Text: "${prompt}"`,
+        prompt: `Is the following text appropriate for a community sports app? The text must be respectful and free of harassment, bullying, and profanity. Text: "${prompt}"`,
         config: {
-          // Strictest setting for sexually explicit content
+          // Strictest setting for safety categories
           safetySettings: [
             {
               category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',

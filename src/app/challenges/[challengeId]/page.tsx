@@ -12,17 +12,19 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "fire
 import { challenges } from "@/lib/challengeData";
 import { Button } from "@/components/ui/button";
 import { DesktopHeader } from "@/components/ui/TopNav";
-import { ChevronLeft, Loader2, Upload } from "lucide-react";
+import { ChevronLeft, Loader2, Upload, Youtube } from "lucide-react";
 import Link from "next/link";
 import ChallengeRecorder from "@/components/challenges/ChallengeRecorder";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { moderateContent } from "@/ai/flows/moderate-content-flow";
+import { Checkbox } from "@/components/ui/checkbox";
 
 
 const challengeSubmissionSchema = z.object({
   notes: z.string().optional(),
+  youtubeConsent: z.boolean().default(false).optional(),
 });
 
 export default function ChallengeAttemptPage() {
@@ -42,6 +44,7 @@ export default function ChallengeAttemptPage() {
     resolver: zodResolver(challengeSubmissionSchema),
     defaultValues: {
       notes: "",
+      youtubeConsent: false,
     },
   });
 
@@ -67,7 +70,7 @@ export default function ChallengeAttemptPage() {
           toast({
             variant: "destructive",
             title: "Inappropriate Content Detected",
-            description: "Please revise your notes and try again.",
+            description: "Please revise your notes to comply with our community guidelines.",
           });
           setIsSubmitting(false);
           return;
@@ -80,8 +83,6 @@ export default function ChallengeAttemptPage() {
         await uploadBytes(videoFileRef, videoBlob);
         const mediaURL = await getDownloadURL(videoFileRef);
 
-        // TODO: This should probably go into a dedicated 'attempts' collection
-        // For now, adding to user's training sessions for consistency
         await addDoc(collection(firestore, "users", user.uid, "training_sessions"), {
             userId: user.uid,
             createdAt: serverTimestamp(),
@@ -90,7 +91,8 @@ export default function ChallengeAttemptPage() {
             notes: values.notes || "",
             mediaURL: mediaURL,
             challengeId: challenge.id,
-            status: "pending_verification" // For later use
+            youtubeConsent: values.youtubeConsent,
+            status: "pending_verification"
         });
 
         toast({ title: "Challenge Attempt Submitted!", description: "Your proof has been sent for verification." });
@@ -164,6 +166,33 @@ export default function ChallengeAttemptPage() {
                         </FormItem>
                         )}
                     />
+
+                    {videoBlob && (
+                        <FormField
+                        control={form.control}
+                        name="youtubeConsent"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 bg-background">
+                            <FormControl>
+                                <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                                <FormLabel className="flex items-center gap-2">
+                                <Youtube className="text-red-500"/> Feature me on YouTube!
+                                </FormLabel>
+                                <FormMessage />
+                                <p className="text-xs text-white/50">
+                                    I agree to have this video potentially featured on M2DG's social media and YouTube channel.
+                                </p>
+                            </div>
+                            </FormItem>
+                        )}
+                        />
+                    )}
+
                     <Button type="submit" className="w-full" disabled={!videoBlob || isSubmitting}>
                         {isSubmitting ? <Loader2 className="animate-spin" /> : <Upload size={16}/>}
                         {isSubmitting ? "Submitting..." : "Submit Attempt"}
