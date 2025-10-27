@@ -26,7 +26,7 @@ const profileFormSchema = z.object({
   displayName: z.string().min(2, "Display name must be at least 2 characters."),
   username: z.string().min(3, "Username must be at least 3 characters."),
   aboutMe: z.string().max(200, "About me must be 200 characters or less.").optional(),
-  homeCourt: z.string().min(1, "Please select your home court."),
+  homeCourtId: z.string().min(1, "Please select your home court."),
 });
 
 export default function EditProfilePage() {
@@ -55,21 +55,23 @@ export default function EditProfilePage() {
       displayName: '',
       username: '',
       aboutMe: '',
-      homeCourt: '',
+      homeCourtId: '',
     },
   });
 
   useEffect(() => {
-    if (user) {
-      form.reset({
-        displayName: user.displayName || '',
-        username: user.username || '',
-        aboutMe: user.aboutMe || '',
-        homeCourt: user.homeCourt || '',
-      });
-      setAvatarPreview(user.avatarURL);
+    if (user && courts) {
+        const homeCourt = courts.find(c => c.name === user.homeCourt);
+        form.reset({
+            displayName: user.displayName || '',
+            username: user.username || '',
+            aboutMe: user.aboutMe || '',
+            homeCourtId: homeCourt?.id || '',
+        });
+        setAvatarPreview(user.avatarURL);
     }
-  }, [user, form]);
+  }, [user, courts, form]);
+
 
   useEffect(() => {
     // Redirect to login only if auth has loaded and there is no authenticated user.
@@ -92,7 +94,7 @@ export default function EditProfilePage() {
 
 
   async function onSubmit(values: z.infer<typeof profileFormSchema>) {
-    if (!authUser || !userDocRef) return;
+    if (!authUser || !userDocRef || !courts) return;
     setIsUploading(true);
 
     try {
@@ -105,9 +107,20 @@ export default function EditProfilePage() {
         newAvatarURL = await getDownloadURL(uploadResult.ref);
       }
 
+      const selectedCourt = courts.find(court => court.id === values.homeCourtId);
+      if (!selectedCourt) {
+        toast({ variant: "destructive", title: "Invalid Court", description: "The selected home court could not be found." });
+        setIsUploading(false);
+        return;
+      }
+
       await updateDoc(userDocRef, {
-        ...values,
+        displayName: values.displayName,
+        username: values.username,
+        aboutMe: values.aboutMe,
         avatarURL: newAvatarURL,
+        homeCourt: selectedCourt.name,
+        city: selectedCourt.city,
       });
 
       toast({ title: "Profile Updated!", description: "Your changes have been saved." });
@@ -180,10 +193,10 @@ export default function EditProfilePage() {
                             <FormMessage />
                         </FormItem>
                     )}/>
-                    <FormField control={form.control} name="homeCourt" render={({ field }) => (
+                    <FormField control={form.control} name="homeCourtId" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Home Court</FormLabel>
-                             <Select onValueChange={field.onChange} defaultValue={field.value}>
+                             <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                                 <FormControl>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select your home court" />
@@ -191,7 +204,7 @@ export default function EditProfilePage() {
                                 </FormControl>
                                 <SelectContent>
                                     {courts?.map(court => (
-                                        <SelectItem key={court.id} value={court.name}>{court.name}</SelectItem>
+                                        <SelectItem key={court.id} value={court.id}>{court.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
