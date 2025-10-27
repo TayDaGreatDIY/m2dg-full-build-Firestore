@@ -37,9 +37,11 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!isChatLoading && !chat) {
-      router.push('/messages');
+      // If the chat doesn't exist after loading, maybe redirect
+      console.warn(`Chat with ID ${chatId} not found.`);
+      // router.push('/messages');
     }
-  }, [isChatLoading, chat, router]);
+  }, [isChatLoading, chat, router, chatId]);
 
   if (loading) {
     return <div className="flex h-screen max-w-md mx-auto items-center justify-center"><Loader2 className="animate-spin text-primary" size={32} /></div>;
@@ -64,3 +66,4 @@ export default function ChatPage() {
     </div>
   );
 }
+    
