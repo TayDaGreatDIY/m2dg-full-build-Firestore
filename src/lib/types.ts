@@ -12,6 +12,7 @@ export type User = {
   winStreak: number;
   trainingStreak: number;
   homeCourt: string;
+  homeCourtId?: string;
   city?: string;
 };
 

@@ -26,7 +26,7 @@ const profileFormSchema = z.object({
   displayName: z.string().min(2, "Display name must be at least 2 characters."),
   username: z.string().min(3, "Username must be at least 3 characters."),
   aboutMe: z.string().max(200, "About me must be 200 characters or less.").optional(),
-  homeCourtId: z.string().min(1, "Please select your home court."),
+  homeCourtId: z.string().nonempty({ message: "Please select your home court." }),
 });
 
 export default function EditProfilePage() {
@@ -34,7 +34,7 @@ export default function EditProfilePage() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
-  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -66,7 +66,7 @@ export default function EditProfilePage() {
             displayName: user.displayName || '',
             username: user.username || '',
             aboutMe: user.aboutMe || '',
-            homeCourtId: homeCourt?.id || '',
+            homeCourtId: homeCourt?.id || user.homeCourtId || '',
         });
         setAvatarPreview(user.avatarURL);
     }
@@ -74,7 +74,6 @@ export default function EditProfilePage() {
 
 
   useEffect(() => {
-    // Redirect to login only if auth has loaded and there is no authenticated user.
     if (!isAuthLoading && !authUser) {
       router.replace('/login');
     }
@@ -95,7 +94,7 @@ export default function EditProfilePage() {
 
   async function onSubmit(values: z.infer<typeof profileFormSchema>) {
     if (!authUser || !userDocRef || !courts) return;
-    setIsUploading(true);
+    setIsSubmitting(true);
 
     try {
       let newAvatarURL = user?.avatarURL;
@@ -110,7 +109,7 @@ export default function EditProfilePage() {
       const selectedCourt = courts.find(court => court.id === values.homeCourtId);
       if (!selectedCourt) {
         toast({ variant: "destructive", title: "Invalid Court", description: "The selected home court could not be found." });
-        setIsUploading(false);
+        setIsSubmitting(false);
         return;
       }
 
@@ -120,17 +119,19 @@ export default function EditProfilePage() {
         aboutMe: values.aboutMe,
         avatarURL: newAvatarURL,
         homeCourt: selectedCourt.name,
+        homeCourtId: selectedCourt.id,
         city: selectedCourt.city,
       });
 
       toast({ title: "Profile Updated!", description: "Your changes have been saved." });
       router.push(`/player/${authUser.uid}`);
+      router.refresh();
 
     } catch (error) {
       console.error("Error updating profile:", error);
       toast({ variant: "destructive", title: "Update Failed", description: "Could not save your changes." });
     } finally {
-      setIsUploading(false);
+      setIsSubmitting(false);
     }
   }
 
@@ -167,7 +168,7 @@ export default function EditProfilePage() {
                             className="hidden" 
                             accept="image/png, image/jpeg" 
                         />
-                        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isSubmitting}>
                            <UploadCloud size={16} /> Upload Photo
                         </Button>
                     </div>
@@ -175,28 +176,28 @@ export default function EditProfilePage() {
                     <FormField control={form.control} name="displayName" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Display Name</FormLabel>
-                            <FormControl><Input {...field} /></FormControl>
+                            <FormControl><Input {...field} disabled={isSubmitting} /></FormControl>
                             <FormMessage />
                         </FormItem>
                     )}/>
                     <FormField control={form.control} name="username" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Username</FormLabel>
-                            <FormControl><Input {...field} /></FormControl>
+                            <FormControl><Input {...field} disabled={isSubmitting} /></FormControl>
                             <FormMessage />
                         </FormItem>
                     )}/>
                     <FormField control={form.control} name="aboutMe" render={({ field }) => (
                         <FormItem>
                             <FormLabel>About Me</FormLabel>
-                            <FormControl><Textarea placeholder="What's your game like?" {...field} /></FormControl>
+                            <FormControl><Textarea placeholder="What's your game like?" {...field} disabled={isSubmitting} /></FormControl>
                             <FormMessage />
                         </FormItem>
                     )}/>
                     <FormField control={form.control} name="homeCourtId" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Home Court</FormLabel>
-                             <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                             <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                                 <FormControl>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select your home court" />
@@ -212,8 +213,8 @@ export default function EditProfilePage() {
                         </FormItem>
                     )}/>
                     
-                    <Button type="submit" className="w-full" disabled={isUploading}>
-                        {isUploading ? <Loader2 className="animate-spin" /> : 'Save Changes'}
+                    <Button type="submit" className="w-full" disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="animate-spin" /> : 'Save Changes'}
                     </Button>
                 </form>
             </Form>

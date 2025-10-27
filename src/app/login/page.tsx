@@ -48,6 +48,7 @@ export default function LoginPage() {
           winStreak: 0,
           trainingStreak: 0,
           homeCourt: 'Not Set',
+          homeCourtId: '',
           city: "Unknown"
         });
 
