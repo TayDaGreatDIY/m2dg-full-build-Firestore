@@ -13,9 +13,10 @@ import { Badge } from '@/components/ui/badge';
 import UserAvatar from '@/components/ui/UserAvatar';
 import HostRunDialog from '@/components/courts/HostRunDialog';
 import type { Court, CheckIn, Run, User } from '@/lib/types';
-import { MapPin, Users, PlusCircle, LogOut } from 'lucide-react';
+import { MapPin, Users, PlusCircle, LogOut, ChevronLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import Link from 'next/link';
 
 export default function CourtDetailPage() {
   const params = useParams();
@@ -37,6 +38,7 @@ export default function CourtDetailPage() {
   // Fetch check-ins
   const checkinsQuery = useMemoFirebase(() => {
     if (!firestore || !courtId) return null;
+    // We get the user document along with the check-in to display avatar/name
     return collection(firestore, 'courts', courtId, 'checkins');
   }, [firestore, courtId]);
   const { data: checkins, isLoading: areCheckinsLoading } = useCollection<CheckIn>(checkinsQuery);
@@ -53,15 +55,23 @@ export default function CourtDetailPage() {
   const handleCheckIn = async () => {
     if (!currentUser || !courtId || !firestore) return;
     const checkinRef = doc(firestore, 'courts', courtId, 'checkins', currentUser.uid);
+    
+    // We need to fetch the current user's profile to store denormalized data
+    const userDocSnap = await doc(firestore, 'users', currentUser.uid).get();
+    if (!userDocSnap.exists()) {
+        toast({ variant: 'destructive', title: "Check-in failed", description: "Could not find your user profile." });
+        return;
+    }
+    const userProfile = userDocSnap.data() as User;
+
     try {
-      // We are creating a sub-document with user info for easy display
       await setDoc(checkinRef, {
         userId: currentUser.uid,
         timestamp: serverTimestamp(),
-        user: {
+        user: { // Denormalizing user data for display
             uid: currentUser.uid,
-            displayName: currentUser.displayName,
-            avatarURL: currentUser.photoURL,
+            displayName: userProfile.displayName,
+            avatarURL: userProfile.avatarURL,
         }
       });
       toast({ title: "You're checked in!", description: `You are now checked in at ${court?.name}.` });
@@ -106,7 +116,14 @@ export default function CourtDetailPage() {
   if (!court) {
     return (
       <div className="flex flex-col min-h-screen">
-        <DesktopHeader pageTitle="Not Found" />
+        <header className="flex items-center gap-4 p-3 border-b border-white/10 bg-background">
+            <Button variant="ghost" size="icon" asChild>
+                <Link href="/courts">
+                    <ChevronLeft size={20} />
+                </Link>
+            </Button>
+            <h1 className="font-bold font-headline">Court Not Found</h1>
+        </header>
         <main className="flex-1 flex items-center justify-center">
           <p>Court not found.</p>
         </main>
@@ -123,7 +140,14 @@ export default function CourtDetailPage() {
           courtName={court.name}
       />
       <div className="flex flex-col min-h-screen bg-background">
-        <DesktopHeader pageTitle={court.name} />
+        <header className="flex items-center gap-4 p-3 border-b border-white/10 bg-background sticky top-0 z-20">
+            <Button variant="ghost" size="icon" asChild>
+                <Link href="/courts">
+                    <ChevronLeft size={20} />
+                </Link>
+            </Button>
+            <h1 className="font-bold font-headline truncate">{court.name}</h1>
+        </header>
         <main className="flex-1 pb-24">
           <div className="relative h-48 w-full">
               <Image src={court.img || 'https://picsum.photos/seed/court/800/400'} alt={court.name} fill style={{ objectFit: 'cover' }} className="opacity-50" />
@@ -163,12 +187,14 @@ export default function CourtDetailPage() {
                   {checkins && checkins.length > 0 ? (
                       <div className="flex flex-wrap gap-3">
                           {checkins.map(c => (
+                            c.user ? (
                               <UserAvatar 
                                   key={c.id} 
-                                  src={c.user?.avatarURL} 
-                                  name={c.user?.displayName || 'Unknown'} 
+                                  src={c.user.avatarURL} 
+                                  name={c.user.displayName || 'Unknown'} 
                                   size={40}
                               />
+                            ) : null
                           ))}
                       </div>
                   ) : (
