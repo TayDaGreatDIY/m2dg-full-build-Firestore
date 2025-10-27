@@ -17,7 +17,8 @@ export const aiTrainerFlow = ai.defineFlow(
   {
     name: 'aiTrainerFlow',
     inputSchema: AITrainerInputSchema,
-    // We are using a stream of strings as output, so no schema is needed.
+    // We are streaming raw text output
+    outputSchema: z.string(),
   },
   async (input) => {
 
@@ -46,6 +47,19 @@ Your tone should be:
       stream: true,
     });
     
-    return stream;
+    // We will stream the text content of each chunk
+    const textStream = new ReadableStream({
+      async start(controller) {
+        for await (const chunk of stream) {
+          const text = chunk.text;
+          if (text) {
+            controller.enqueue(text);
+          }
+        }
+        controller.close();
+      }
+    });
+
+    return textStream;
   }
 );

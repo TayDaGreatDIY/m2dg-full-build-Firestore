@@ -1,6 +1,5 @@
 
 import { aiTrainerFlow } from '@/ai/flows/ai-trainer-flow';
-import { StreamData } from 'ai';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -10,26 +9,25 @@ export async function POST(req: Request) {
     const { messages } = await req.json();
     const latestMessage = messages[messages.length - 1];
     
-    // The flow returns a stream of objects with a 'text' property
+    // The flow now correctly returns a stream of strings
     const flowStream = await aiTrainerFlow({ prompt: latestMessage.content });
 
-    const data = new StreamData();
-
-    const stream = new ReadableStream({
+    // Create a new readable stream to send to the client
+    const readableStream = new ReadableStream({
       async start(controller) {
         // Pipe the chunks from the AI flow to our response stream
         for await (const chunk of flowStream) {
-          if (chunk.text) {
-             controller.enqueue(chunk.text);
-          }
+            // The chunk itself is now the text string
+            if (chunk) {
+               controller.enqueue(new TextEncoder().encode(chunk));
+            }
         }
         controller.close();
-        data.close();
       },
     });
 
     // Return a standard Response with the correct headers for streaming
-    return new Response(stream, {
+    return new Response(readableStream, {
         headers: {
             'Content-Type': 'text/plain; charset=utf-8',
             'X-Content-Type-Options': 'nosniff',
