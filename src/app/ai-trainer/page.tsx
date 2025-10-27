@@ -1,27 +1,83 @@
 
-"use client";
+'use client';
 
-import { useChat } from "ai/react";
-import { DesktopHeader } from "@/components/ui/TopNav";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Send, Bot, User, Loader2 } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import UserAvatar from "@/components/ui/UserAvatar";
-import { useUser } from "@/firebase";
-import { cn } from "@/lib/utils";
+import { useState, useRef, useEffect } from 'react';
+import { DesktopHeader } from '@/components/ui/TopNav';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Send, Bot, User, Loader2 } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import UserAvatar from '@/components/ui/UserAvatar';
+import { useUser } from '@/firebase';
+import { cn } from '@/lib/utils';
+
+// Define the shape of a message
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 export default function AiTrainerPage() {
   const { user: authUser } = useUser();
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
-    api: "/api/ai-trainer",
-  });
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Function to scroll to the bottom of the chat
+  const scrollToBottom = () => {
+    if (scrollAreaRef.current) {
+        const viewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
+        if (viewport) {
+             viewport.scrollTop = viewport.scrollHeight;
+        }
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: Message = { role: 'user', content: input };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/ai-trainer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: input }),
+      });
+
+      if (!response.ok) {
+        throw new Error('The AI coach is unavailable right now. Please try again later.');
+      }
+      
+      const data = await response.json();
+      const assistantMessage: Message = { role: 'assistant', content: data.reply };
+      setMessages((prev) => [...prev, assistantMessage]);
+
+    } catch (error: any) {
+      const errorMessage: Message = {
+        role: 'assistant',
+        content: error.message || "I'm having trouble connecting. Please try again.",
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen">
       <DesktopHeader pageTitle="AI Trainer" />
       <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full">
-        <ScrollArea className="flex-1 p-4">
+        <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-6">
             {messages.length === 0 && (
                 <div className="text-center p-8 rounded-lg bg-card border border-white/10">
@@ -32,9 +88,9 @@ export default function AiTrainerPage() {
                     </p>
                 </div>
             )}
-            {messages.map((m) => (
+            {messages.map((m, index) => (
               <div
-                key={m.id}
+                key={index}
                 className={cn("flex items-start gap-4", m.role === "user" ? "justify-end" : "justify-start")}
               >
                 {m.role !== "user" && (
@@ -74,7 +130,7 @@ export default function AiTrainerPage() {
           <form onSubmit={handleSubmit} className="flex items-center gap-2">
             <Input
               value={input}
-              onChange={handleInputChange}
+              onChange={(e) => setInput(e.target.value)}
               placeholder="Ask your coach for a workout plan..."
               className="flex-1"
               autoComplete="off"
