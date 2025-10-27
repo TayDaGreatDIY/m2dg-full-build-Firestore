@@ -17,8 +17,7 @@ export const aiTrainerFlow = ai.defineFlow(
   {
     name: 'aiTrainerFlow',
     inputSchema: AITrainerInputSchema,
-    // We are streaming raw text output
-    outputSchema: z.string(),
+    // The output is a stream of strings, so we don't define a Zod schema for it.
   },
   async (input) => {
 
