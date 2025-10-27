@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
 import { DesktopHeader } from '@/components/ui/TopNav';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ const profileFormSchema = z.object({
 
 export default function EditProfilePage() {
   const { user: authUser, isUserLoading: isAuthLoading } = useUser();
-  const firestore = useFirestore();
+  const { firestore, storage } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,17 +60,16 @@ export default function EditProfilePage() {
   });
 
   useEffect(() => {
-    if (user && courts) {
-        const homeCourt = courts.find(c => c.name === user.homeCourt);
-        form.reset({
-            displayName: user.displayName || '',
-            username: user.username || '',
-            aboutMe: user.aboutMe || '',
-            homeCourtId: homeCourt?.id || user.homeCourtId || '',
-        });
-        setAvatarPreview(user.avatarURL);
+    if (user) {
+      form.reset({
+        displayName: user.displayName || '',
+        username: user.username || '',
+        aboutMe: user.aboutMe || '',
+        homeCourtId: user.homeCourtId || '',
+      });
+      setAvatarPreview(user.avatarURL);
     }
-  }, [user, courts, form]);
+  }, [user, form]);
 
 
   useEffect(() => {
@@ -99,8 +98,7 @@ export default function EditProfilePage() {
     try {
       let newAvatarURL = user?.avatarURL;
       
-      if (avatarFile) {
-        const storage = getStorage();
+      if (avatarFile && storage) {
         const avatarRef = storageRef(storage, `avatars/${authUser.uid}/${avatarFile.name}`);
         const uploadResult = await uploadBytes(avatarRef, avatarFile);
         newAvatarURL = await getDownloadURL(uploadResult.ref);
@@ -137,7 +135,7 @@ export default function EditProfilePage() {
 
   const isLoading = isAuthLoading || isUserDocLoading || areCourtsLoading;
 
-  if (isLoading || !user) {
+  if (isLoading || (!user && !isAuthLoading)) {
     return (
       <div className="flex flex-col min-h-screen">
         <DesktopHeader pageTitle="Edit Profile" />
@@ -152,6 +150,17 @@ export default function EditProfilePage() {
     );
   }
 
+  if (!user && !isUserDocLoading) {
+      return (
+        <div className="flex flex-col min-h-screen">
+          <DesktopHeader pageTitle="Edit Profile" />
+          <main className="flex-1 flex items-center justify-center">
+              <p>User profile could not be loaded.</p>
+          </main>
+        </div>
+      )
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       <DesktopHeader pageTitle="Edit Profile" />
@@ -160,7 +169,7 @@ export default function EditProfilePage() {
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div className="flex flex-col items-center gap-4">
-                        <UserAvatar src={avatarPreview || ''} name={user.displayName} size={96} />
+                        <UserAvatar src={avatarPreview || ''} name={user?.displayName || ''} size={96} />
                         <input 
                             type="file" 
                             ref={fileInputRef} 
@@ -213,7 +222,7 @@ export default function EditProfilePage() {
                         </FormItem>
                     )}/>
                     
-                    <Button type="submit" className="w-full" disabled={isSubmitting}>
+                    <Button type="submit" className="w-full" disabled={isSubmitting || !form.formState.isDirty && !avatarFile}>
                         {isSubmitting ? <Loader2 className="animate-spin" /> : 'Save Changes'}
                     </Button>
                 </form>
