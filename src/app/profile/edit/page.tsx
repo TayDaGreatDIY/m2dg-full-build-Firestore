@@ -72,10 +72,10 @@ export default function EditProfilePage() {
 
 
   useEffect(() => {
-    if (!isAuthLoading && !authUser && !isUserDocLoading) {
+    if (!isAuthLoading && !authUser) {
       router.replace('/login');
     }
-  }, [isAuthLoading, authUser, isUserDocLoading, router]);
+  }, [isAuthLoading, authUser, router]);
   
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -103,7 +103,6 @@ export default function EditProfilePage() {
             throw new Error("Selected home court could not be found.");
         }
         
-        // Start with base data from form
         const dataToUpdate: Record<string, any> = {
             displayName: values.displayName,
             username: values.username,
@@ -113,14 +112,12 @@ export default function EditProfilePage() {
             city: selectedCourt.city,
         };
 
-        // Handle image upload separately and add to data if present
         if (avatarFile) {
             const avatarStorageRef = storageRef(storage, `avatars/${authUser.uid}/${Date.now()}_${avatarFile.name}`);
             await uploadBytes(avatarStorageRef, avatarFile);
             dataToUpdate.avatarURL = await getDownloadURL(avatarStorageRef);
         }
 
-        // Perform the single update operation
         await updateDoc(userDocRef, dataToUpdate);
 
         toast({ title: "Profile Updated!", description: "Your changes have been saved successfully." });
@@ -133,8 +130,7 @@ export default function EditProfilePage() {
             title: "Update Failed", 
             description: error.message || "Could not save your changes." 
         });
-    } finally {
-        setIsSubmitting(false);
+        setIsSubmitting(false); // Only set submitting to false in catch
     }
 }
 
