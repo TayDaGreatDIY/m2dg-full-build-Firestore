@@ -75,11 +75,11 @@ export default function AiTrainerPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-full">
       <DesktopHeader pageTitle="AI Trainer" />
-      <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full">
+      <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full min-h-0">
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-          <div className="space-y-6">
+          <div className="space-y-6 pb-4">
             {messages.length === 0 && (
                 <div className="text-center p-8 rounded-lg bg-card border border-white/10">
                     <Bot className="mx-auto h-12 w-12 text-orange" />
@@ -107,7 +107,7 @@ export default function AiTrainerPage() {
                       : "bg-card text-white/90 rounded-bl-none"
                   )}
                 >
-                  <p>{m.content}</p>
+                  <p className="whitespace-pre-wrap">{m.content}</p>
                 </div>
                  {m.role === "user" && (
                   <UserAvatar src={authUser?.photoURL || ''} name={authUser?.displayName || ''} size={40} />
