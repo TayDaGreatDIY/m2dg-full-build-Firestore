@@ -70,6 +70,13 @@ export default function EditProfilePage() {
       setAvatarPreview(user.avatarURL);
     }
   }, [user, form]);
+
+  useEffect(() => {
+    // Redirect to login only if auth has loaded and there is no authenticated user.
+    if (!isAuthLoading && !authUser) {
+      router.replace('/login');
+    }
+  }, [isAuthLoading, authUser, router]);
   
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -116,7 +123,7 @@ export default function EditProfilePage() {
 
   const isLoading = isAuthLoading || isUserDocLoading || areCourtsLoading;
 
-  if (isLoading) {
+  if (isLoading || !user) {
     return (
       <div className="flex flex-col min-h-screen">
         <DesktopHeader pageTitle="Edit Profile" />
@@ -129,12 +136,6 @@ export default function EditProfilePage() {
         </main>
       </div>
     );
-  }
-
-  if (!user) {
-    // This should ideally not happen if user is authenticated, but good practice to handle.
-    router.push('/login');
-    return null;
   }
 
   return (
