@@ -1,4 +1,5 @@
 
+
 import { Timestamp } from "firebase/firestore";
 
 export type User = {
@@ -61,6 +62,7 @@ export type Challenge = {
 export type FeedPost = {
   id: string;
   user: string;
+  userId: string; // Added to link to player profile
   avatar: string;
   text: string;
   court: string;
@@ -95,3 +97,4 @@ export type ChatMessage = {
   text: string;
   timestamp: string;
 };
+

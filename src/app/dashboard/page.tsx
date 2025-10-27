@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { doc } from "firebase/firestore";
 import { useFirestore } from "@/firebase";
 import type { User as AppUser } from "@/lib/types";
+import Link from "next/link";
 
 
 export default function DashboardPage() {
@@ -66,7 +67,9 @@ export default function DashboardPage() {
             <UserAvatar src={user.avatarURL} name={user.displayName} size={48} />
             <div>
               <h2 className="text-lg font-bold font-headline">Welcome, {user.displayName}</h2>
-              <p className="text-sm text-white/50">@{user.username}</p>
+              <Link href={`/player/${user.uid}`} className="hover:underline">
+                <p className="text-sm text-white/50">@{user.username}</p>
+              </Link>
             </div>
           </div>
         </div>

@@ -5,6 +5,7 @@ import type { User } from "@/lib/types";
 import UserAvatar from "@/components/ui/UserAvatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 type LeaderboardPlayer = User & { rank: number };
 
@@ -35,8 +36,10 @@ export default function LeaderboardList({ players }: LeaderboardListProps) {
           </div>
           <UserAvatar src={player.avatarURL} name={player.displayName} size={40} />
           <div className="flex-1">
-            <p className="font-bold text-sm">{player.displayName}</p>
-            <p className="text-xs text-white/50">@{player.username} • {player.homeCourt}</p>
+             <Link href={`/player/${player.uid}`} className="hover:underline">
+                <p className="font-bold text-sm">{player.displayName}</p>
+                <p className="text-xs text-white/50">@{player.username} • {player.homeCourt}</p>
+             </Link>
           </div>
           <div className="flex flex-col items-end gap-1">
             <Badge variant="secondary" className="text-xs">{player.xp} XP</Badge>

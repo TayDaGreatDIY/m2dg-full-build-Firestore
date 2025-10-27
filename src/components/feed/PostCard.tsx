@@ -1,9 +1,11 @@
+
 "use client";
 
 import type { FeedPost } from "@/lib/types";
 import UserAvatar from "@/components/ui/UserAvatar";
 import { Badge } from "@/components/ui/badge";
 import { MapPin } from "lucide-react";
+import Link from "next/link";
 
 type PostCardProps = {
   post: FeedPost;
@@ -15,7 +17,9 @@ export default function PostCard({ post }: PostCardProps) {
       <div className="flex items-center gap-3">
         <UserAvatar src={post.avatar} name={post.user} size={40} />
         <div>
-          <p className="font-bold text-sm">@{post.user}</p>
+          <Link href={`/player/${post.userId}`} className="hover:underline">
+            <p className="font-bold text-sm">@{post.user}</p>
+          </Link>
           <p className="text-xs text-white/50">{post.ts}</p>
         </div>
       </div>
