@@ -66,7 +66,6 @@ export default function CourtsPage() {
         <div className="max-w-md mx-auto space-y-6">
           <div className="text-center space-y-2">
               <h2 className="text-2xl font-bold font-headline tracking-tight">Find a Court</h2>
-              <p className="text-sm text-white/50">Discover courts and runs in your city.</p>
           </div>
           
           <div className="flex gap-2">
