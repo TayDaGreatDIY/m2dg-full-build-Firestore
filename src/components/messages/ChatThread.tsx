@@ -3,8 +3,8 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
-import { useUser, useFirestore } from '@/firebase';
-import type { Message } from "@/lib/types";
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import type { Message, Chat, User as AppUser } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,14 @@ export default function ChatThread({ chatId }: ChatThreadProps) {
   const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const chatDocRef = useMemoFirebase(() => {
+    if (!firestore || !chatId) return null;
+    return doc(firestore, 'chats', chatId);
+  }, [firestore, chatId]);
+
+  const { data: chat } = useDoc<Chat>(chatDocRef);
+
 
   useEffect(() => {
     if (!chatId || !firestore) return;
@@ -44,10 +52,18 @@ export default function ChatThread({ chatId }: ChatThreadProps) {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === "" || !user || !firestore) return;
+    if (newMessage.trim() === "" || !user || !firestore || !chat) return;
 
     const messagesColRef = collection(firestore, 'chats', chatId, 'messages');
     const chatDocRef = doc(firestore, 'chats', chatId);
+    const otherUserId = chat.memberIds.find(id => id !== user.uid);
+
+    if (!otherUserId) {
+        console.error("Could not find other user in chat.");
+        return;
+    }
+
+    const notificationColRef = collection(firestore, "users", otherUserId, "notifications");
 
     try {
       await addDoc(messagesColRef, {
@@ -60,6 +76,18 @@ export default function ChatThread({ chatId }: ChatThreadProps) {
         lastMessage: newMessage,
         lastTimestamp: serverTimestamp(),
       });
+
+      // Create a notification for the other user
+      await addDoc(notificationColRef, {
+          userId: otherUserId,
+          fromId: user.uid,
+          fromName: user.displayName,
+          type: "new_message",
+          link: `/messages/${chatId}`,
+          read: false,
+          createdAt: serverTimestamp(),
+      });
+
 
       setNewMessage("");
     } catch (error) {

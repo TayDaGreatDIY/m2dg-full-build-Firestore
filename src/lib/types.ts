@@ -26,7 +26,7 @@ export type TrainingLog = {
 };
 
 export type Chat = {
-  id: string;
+  id:string;
   memberIds: string[];
   lastMessage: string;
   lastTimestamp: Timestamp;
@@ -43,6 +43,17 @@ export type Message = {
   text: string;
   createdAt: Timestamp;
 };
+
+export type Notification = {
+    id: string;
+    userId: string; // User who receives the notification
+    fromId: string;
+    fromName: string;
+    type: 'new_message';
+    link: string; // e.g., /messages/chatId
+    read: boolean;
+    createdAt: Timestamp;
+}
 
 export type Court = {
   id: string;
