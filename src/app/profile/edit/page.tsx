@@ -73,7 +73,6 @@ export default function EditProfilePage() {
 
 
   useEffect(() => {
-    // Wait until auth state is confirmed and if no user, redirect.
     if (!isAuthLoading && !authUser) {
       router.replace('/login');
     }
