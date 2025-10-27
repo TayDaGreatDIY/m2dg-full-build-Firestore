@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useUser, useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
@@ -73,6 +73,7 @@ export default function EditProfilePage() {
 
 
   useEffect(() => {
+    // Wait until auth state is confirmed and if no user, redirect.
     if (!isAuthLoading && !authUser) {
       router.replace('/login');
     }
@@ -92,13 +93,13 @@ export default function EditProfilePage() {
 
 
   async function onSubmit(values: z.infer<typeof profileFormSchema>) {
-    if (!authUser || !userDocRef || !courts) return;
+    if (!authUser || !userDocRef || !courts || !storage) return;
     setIsSubmitting(true);
 
     try {
       let newAvatarURL = user?.avatarURL;
       
-      if (avatarFile && storage) {
+      if (avatarFile) {
         const avatarRef = storageRef(storage, `avatars/${authUser.uid}/${avatarFile.name}`);
         const uploadResult = await uploadBytes(avatarRef, avatarFile);
         newAvatarURL = await getDownloadURL(uploadResult.ref);
@@ -135,7 +136,7 @@ export default function EditProfilePage() {
 
   const isLoading = isAuthLoading || isUserDocLoading || areCourtsLoading;
 
-  if (isLoading || (!user && !isAuthLoading)) {
+  if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen">
         <DesktopHeader pageTitle="Edit Profile" />
@@ -150,7 +151,7 @@ export default function EditProfilePage() {
     );
   }
 
-  if (!user && !isUserDocLoading) {
+  if (!user && !isUserDocLoading && !isAuthLoading) {
       return (
         <div className="flex flex-col min-h-screen">
           <DesktopHeader pageTitle="Edit Profile" />
@@ -222,7 +223,7 @@ export default function EditProfilePage() {
                         </FormItem>
                     )}/>
                     
-                    <Button type="submit" className="w-full" disabled={isSubmitting || !form.formState.isDirty && !avatarFile}>
+                    <Button type="submit" className="w-full" disabled={isSubmitting || (!form.formState.isDirty && !avatarFile)}>
                         {isSubmitting ? <Loader2 className="animate-spin" /> : 'Save Changes'}
                     </Button>
                 </form>
