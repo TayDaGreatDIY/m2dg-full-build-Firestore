@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Newspaper, Map, Trophy, MessageSquare, ShieldCheck, Bell, ShoppingBag } from "lucide-react";
+import { Home, Newspaper, Map, Trophy, MessageSquare, ShieldCheck, Bell, ShoppingBag, BrainCircuit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser, useCollection, useMemoFirebase, useFirestore } from "@/firebase";
 import type { Notification } from "@/lib/types";
@@ -14,7 +14,7 @@ const navItems = [
   { href: "/dashboard", icon: Home, label: "Home" },
   { href: "/courts", icon: Map, label: "Courts" },
   { href: "/challenges", icon: ShieldCheck, label: "Missions" },
-  { href: "/locker-room", icon: ShoppingBag, label: "Store" },
+  { href: "/motivational-mindset", icon: BrainCircuit, label: "Mindset" },
   { href: "/messages", icon: MessageSquare, label: "DMs" },
 ];
 

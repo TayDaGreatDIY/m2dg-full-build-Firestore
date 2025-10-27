@@ -5,7 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import BottomNav from '@/components/ui/BottomNav';
-import { Home, Map, ShieldCheck, Trophy, MessageSquare, Bell, ShoppingBag } from 'lucide-react';
+import { Home, Map, ShieldCheck, Trophy, MessageSquare, Bell, ShoppingBag, BrainCircuit } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'M2DG - Married 2 Da\' Game',
@@ -19,6 +19,7 @@ const navItems = [
   { href: "/leaderboard", icon: Trophy, label: "Leaders" },
   { href: "/messages", icon: MessageSquare, label: "Messages" },
   { href: "/locker-room", icon: ShoppingBag, label: "Locker Room"},
+  { href: "/motivational-mindset", icon: BrainCircuit, label: "Motivation" },
   { href: "/notifications", icon: Bell, label: "Alerts" },
 ];
 

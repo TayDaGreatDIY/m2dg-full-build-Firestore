@@ -93,6 +93,15 @@ export type Challenge = {
   status: 'ACTIVE' | 'COMPLETED' | 'NEW';
 };
 
+export type Video = {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  thumbnailUrl: string;
+  imageHint: string;
+};
+
 
 // These types were for demo data, keeping them for reference if needed but adapting to Firestore
 export type FeedPost = {
