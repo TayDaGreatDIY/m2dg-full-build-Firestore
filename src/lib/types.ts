@@ -12,6 +12,7 @@ export type User = {
   winStreak: number;
   trainingStreak: number;
   homeCourt: string;
+  city?: string;
 };
 
 export type TrainingLog = {
@@ -47,9 +48,30 @@ export type Court = {
   id: string;
   name: string;
   city: string;
-  statusTag: string; // Renamed from status
+  address: string;
+  status: string;
   img?: string; // Image is optional now
 };
+
+export type CheckIn = {
+    id: string;
+    userId: string;
+    timestamp: Timestamp;
+    user: {
+        uid: string;
+        displayName: string;
+        avatarURL?: string;
+    }
+}
+
+export type Run = {
+    id: string;
+    hostUid: string;
+    hostName: string;
+    time: string;
+    note: string;
+    createdAt: Timestamp;
+}
 
 export type Challenge = {
   id: string;
@@ -99,3 +121,6 @@ export type ChatMessage = {
   timestamp: string;
 };
 
+
+
+    

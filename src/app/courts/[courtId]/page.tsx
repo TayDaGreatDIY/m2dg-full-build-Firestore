@@ -4,9 +4,8 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useUser, useDoc, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
-import { doc, collection, setDoc, deleteDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { doc, collection, setDoc, deleteDoc, serverTimestamp, query, orderBy, getDoc } from 'firebase/firestore';
 import Image from 'next/image';
-import { DesktopHeader } from '@/components/ui/TopNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -57,7 +56,7 @@ export default function CourtDetailPage() {
     const checkinRef = doc(firestore, 'courts', courtId, 'checkins', currentUser.uid);
     
     // We need to fetch the current user's profile to store denormalized data
-    const userDocSnap = await doc(firestore, 'users', currentUser.uid).get();
+    const userDocSnap = await getDoc(doc(firestore, 'users', currentUser.uid));
     if (!userDocSnap.exists()) {
         toast({ variant: 'destructive', title: "Check-in failed", description: "Could not find your user profile." });
         return;
@@ -99,7 +98,12 @@ export default function CourtDetailPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen">
-        <DesktopHeader pageTitle="Loading Court..." />
+        <header className="flex items-center gap-4 p-3 border-b border-white/10 bg-background">
+            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                <ChevronLeft size={20} />
+            </Button>
+            <h1 className="font-bold font-headline">Loading...</h1>
+        </header>
         <main className="flex-1 max-w-lg mx-auto w-full p-4 space-y-6">
           <Skeleton className="h-48 w-full rounded-lg" />
           <Skeleton className="h-10 w-1/2" />
@@ -141,10 +145,8 @@ export default function CourtDetailPage() {
       />
       <div className="flex flex-col min-h-screen bg-background">
         <header className="flex items-center gap-4 p-3 border-b border-white/10 bg-background sticky top-0 z-20">
-            <Button variant="ghost" size="icon" asChild>
-                <Link href="/courts">
-                    <ChevronLeft size={20} />
-                </Link>
+            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                <ChevronLeft size={20} />
             </Button>
             <h1 className="font-bold font-headline truncate">{court.name}</h1>
         </header>
@@ -156,7 +158,7 @@ export default function CourtDetailPage() {
 
           <div className="max-w-lg mx-auto w-full p-4 -mt-16 relative space-y-6">
               <div className="bg-card/80 backdrop-blur-sm p-4 rounded-xl border border-white/10 shadow-lg">
-                  <Badge variant="gold" className="mb-2">{court.statusTag}</Badge>
+                  <Badge variant="gold" className="mb-2">{court.status}</Badge>
                   <h1 className="text-2xl font-bold font-headline text-white">{court.name}</h1>
                   <div className="flex items-center gap-2 text-sm text-white/60 mt-1">
                       <MapPin size={14} />
@@ -230,3 +232,5 @@ export default function CourtDetailPage() {
     </>
   );
 }
+
+    
