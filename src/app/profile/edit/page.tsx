@@ -23,8 +23,8 @@ import type { User, Court } from '@/lib/types';
 
 const profileFormSchema = z.object({
   displayName: z.string().min(2, "Display name must be at least 2 characters."),
-  username: z.string().min(3, "Username must be at least 3 characters."),
-  aboutMe: z.string().max(200, "About me must be 200 characters or less.").optional().default(''),
+  username: z.string().min(3, "Username must be at least 3 characters.").refine(s => !s.includes(' '), 'No spaces are allowed in the username.'),
+  aboutMe: z.string().max(200, "About me must be 200 characters or less.").optional(),
   homeCourtId: z.string().nonempty({ message: "Please select your home court." }),
 });
 
@@ -72,10 +72,10 @@ export default function EditProfilePage() {
 
 
   useEffect(() => {
-    if (!isAuthLoading && !authUser) {
+    if (!isAuthLoading && !authUser && !isUserDocLoading) {
       router.replace('/login');
     }
-  }, [isAuthLoading, authUser, router]);
+  }, [isAuthLoading, authUser, isUserDocLoading, router]);
   
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -89,44 +89,55 @@ export default function EditProfilePage() {
     }
   };
 
-
   async function onSubmit(values: z.infer<typeof profileFormSchema>) {
-    if (!authUser || !userDocRef || !courts || !storage) return;
+    if (!authUser || !userDocRef || !courts || !storage) {
+        toast({ variant: "destructive", title: "Authentication Error", description: "Cannot update profile at the moment." });
+        return;
+    }
     
     setIsSubmitting(true);
 
     try {
-      const selectedCourt = courts.find(court => court.id === values.homeCourtId);
-      if (!selectedCourt) {
-        toast({ variant: "destructive", title: "Invalid Court", description: "The selected home court could not be found." });
-        setIsSubmitting(false);
-        return;
-      }
-      
-      const dataToUpdate: Record<string, any> = {
-          ...values,
-          homeCourt: selectedCourt.name,
-          city: selectedCourt.city,
-      };
+        const selectedCourt = courts.find(court => court.id === values.homeCourtId);
+        if (!selectedCourt) {
+            throw new Error("Selected home court could not be found.");
+        }
+        
+        // Start with base data from form
+        const dataToUpdate: Record<string, any> = {
+            displayName: values.displayName,
+            username: values.username,
+            aboutMe: values.aboutMe || '',
+            homeCourtId: values.homeCourtId,
+            homeCourt: selectedCourt.name,
+            city: selectedCourt.city,
+        };
 
-      if (avatarFile) {
-        const avatarStorageRef = storageRef(storage, `avatars/${authUser.uid}/${avatarFile.name}`);
-        const uploadResult = await uploadBytes(avatarStorageRef, avatarFile);
-        dataToUpdate.avatarURL = await getDownloadURL(avatarStorageRef);
-      }
+        // Handle image upload separately and add to data if present
+        if (avatarFile) {
+            const avatarStorageRef = storageRef(storage, `avatars/${authUser.uid}/${Date.now()}_${avatarFile.name}`);
+            await uploadBytes(avatarStorageRef, avatarFile);
+            dataToUpdate.avatarURL = await getDownloadURL(avatarStorageRef);
+        }
 
-      await updateDoc(userDocRef, dataToUpdate);
+        // Perform the single update operation
+        await updateDoc(userDocRef, dataToUpdate);
 
-      toast({ title: "Profile Updated!", description: "Your changes have been saved." });
-      router.push(`/player/${authUser.uid}`);
+        toast({ title: "Profile Updated!", description: "Your changes have been saved successfully." });
+        router.push(`/player/${authUser.uid}`);
 
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      toast({ variant: "destructive", title: "Update Failed", description: "Could not save your changes." });
+    } catch (error: any) {
+        console.error("Error updating profile:", error);
+        toast({ 
+            variant: "destructive", 
+            title: "Update Failed", 
+            description: error.message || "Could not save your changes." 
+        });
     } finally {
-      setIsSubmitting(false);
+        setIsSubmitting(false);
     }
-  }
+}
+
 
   const isLoading = isAuthLoading || isUserDocLoading || areCourtsLoading;
 
