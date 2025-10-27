@@ -25,7 +25,7 @@ import { collection } from 'firebase/firestore';
 const profileFormSchema = z.object({
   displayName: z.string().min(2, "Display name must be at least 2 characters."),
   username: z.string().min(3, "Username must be at least 3 characters."),
-  aboutMe: z.string().max(200, "About me must be 200 characters or less.").optional(),
+  aboutMe: z.string().max(200, "About me must be 200 characters or less.").optional().default(''),
   homeCourtId: z.string().nonempty({ message: "Please select your home court." }),
 });
 
@@ -60,16 +60,17 @@ export default function EditProfilePage() {
   });
 
   useEffect(() => {
-    if (user) {
-      form.reset({
-        displayName: user.displayName || '',
-        username: user.username || '',
-        aboutMe: user.aboutMe || '',
-        homeCourtId: user.homeCourtId || '',
-      });
-      setAvatarPreview(user.avatarURL);
+    if (user && courts) {
+        const userCourt = courts.find(c => c.id === user.homeCourtId);
+        form.reset({
+            displayName: user.displayName || '',
+            username: user.username || '',
+            aboutMe: user.aboutMe || '',
+            homeCourtId: userCourt ? userCourt.id : '',
+        });
+        setAvatarPreview(user.avatarURL);
     }
-  }, [user, form]);
+  }, [user, courts, form]);
 
 
   useEffect(() => {
@@ -93,33 +94,30 @@ export default function EditProfilePage() {
 
   async function onSubmit(values: z.infer<typeof profileFormSchema>) {
     if (!authUser || !userDocRef || !courts || !storage) return;
+    
     setIsSubmitting(true);
 
     try {
-      let newAvatarURL = user?.avatarURL;
-      
-      if (avatarFile) {
-        const avatarRef = storageRef(storage, `avatars/${authUser.uid}/${avatarFile.name}`);
-        const uploadResult = await uploadBytes(avatarRef, avatarFile);
-        newAvatarURL = await getDownloadURL(uploadResult.ref);
-      }
-
       const selectedCourt = courts.find(court => court.id === values.homeCourtId);
       if (!selectedCourt) {
         toast({ variant: "destructive", title: "Invalid Court", description: "The selected home court could not be found." });
         setIsSubmitting(false);
         return;
       }
+      
+      const dataToUpdate: Record<string, any> = {
+          ...values,
+          homeCourt: selectedCourt.name,
+          city: selectedCourt.city,
+      };
 
-      await updateDoc(userDocRef, {
-        displayName: values.displayName,
-        username: values.username,
-        aboutMe: values.aboutMe,
-        avatarURL: newAvatarURL,
-        homeCourt: selectedCourt.name,
-        homeCourtId: selectedCourt.id,
-        city: selectedCourt.city,
-      });
+      if (avatarFile) {
+        const avatarStorageRef = storageRef(storage, `avatars/${authUser.uid}/${avatarFile.name}`);
+        const uploadResult = await uploadBytes(avatarStorageRef, avatarFile);
+        dataToUpdate.avatarURL = await getDownloadURL(uploadResult.ref);
+      }
+
+      await updateDoc(userDocRef, dataToUpdate);
 
       toast({ title: "Profile Updated!", description: "Your changes have been saved." });
       router.push(`/player/${authUser.uid}`);
