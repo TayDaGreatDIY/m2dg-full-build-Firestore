@@ -4,7 +4,6 @@
 import { DesktopHeader } from "@/components/ui/TopNav";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import Link from "next/link";
 import { storeProducts, Product } from "@/lib/storeData";
 import { ShoppingCart } from "lucide-react";
 
@@ -25,11 +24,11 @@ const ProductCard = ({ product }: { product: Product }) => {
         <p className="text-sm text-white/60 flex-1">{product.description}</p>
         <div className="flex justify-between items-center mt-4">
             <p className="text-xl font-bold text-gold font-headline">{product.price}</p>
-            <Link href={product.amazonUrl} target="_blank" rel="noopener noreferrer">
+            <a href={product.amazonUrl} target="_blank" rel="noopener noreferrer">
               <Button variant="primary">
                 <ShoppingCart size={16} /> View on Amazon
               </Button>
-            </Link>
+            </a>
         </div>
       </div>
     </div>
