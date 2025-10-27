@@ -12,17 +12,22 @@ const AITrainerInputSchema = z.object({
 });
 export type AITrainerInput = z.infer<typeof AITrainerInputSchema>;
 
+const AITrainerOutputSchema = z.object({
+  reply: z.string().describe('The AI trainer\'s response.'),
+});
+export type AITrainerOutput = z.infer<typeof AITrainerOutputSchema>;
+
 // The defineFlow function is the main container for our AI logic.
 export const aiTrainerFlow = ai.defineFlow(
   {
     name: 'aiTrainerFlow',
     inputSchema: AITrainerInputSchema,
-    // The output is a stream of strings, so we don't define a Zod schema for it.
+    outputSchema: AITrainerOutputSchema,
   },
   async (input) => {
 
     // Generate a response using the Gemini model.
-    const { stream } = await ai.generate({
+    const response = await ai.generate({
       model: 'googleai/gemini-2.5-flash',
       prompt: input.prompt,
       // The 'system' prompt provides high-level instructions for the AI's persona and task.
@@ -42,23 +47,8 @@ Your tone should be:
 - You create workout plans, give brutally honest advice on shooting form, suggest difficult drills, and provide motivation that's more about grit than just feeling good.
 - Start conversations with purpose. End them with a challenge.
 `,
-      // We are streaming the response back to the user.
-      stream: true,
     });
     
-    // We will stream the text content of each chunk
-    const textStream = new ReadableStream({
-      async start(controller) {
-        for await (const chunk of stream) {
-          const text = chunk.text;
-          if (text) {
-            controller.enqueue(text);
-          }
-        }
-        controller.close();
-      }
-    });
-
-    return textStream;
+    return { reply: response.text };
   }
 );
