@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useEffect } from "react";
 import { DesktopHeader } from "@/components/ui/TopNav";
 import CourtCard from "@/components/courts/CourtCard";
 import { Button } from "@/components/ui/button";
@@ -8,10 +9,46 @@ import { useCollection, useMemoFirebase } from "@/firebase";
 import { useFirestore } from "@/firebase";
 import type { Court } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { collection } from "firebase/firestore";
+import { collection, writeBatch, getDocs, doc, limit, query } from "firebase/firestore";
+import { courtData } from "@/lib/courtData";
+
+const seedInitialCourts = async (db: any) => {
+    console.log("Checking if courts need to be seeded...");
+    // More robust check: see if the collection is empty.
+    const courtsCollectionRef = collection(db, "courts");
+    const q = query(courtsCollectionRef, limit(1));
+    const initialCheck = await getDocs(q);
+    
+    if (!initialCheck.empty) {
+        console.log("Courts collection is not empty. Seeding skipped.");
+        return;
+    }
+    
+    console.log("Seeding initial courts...");
+    const batch = writeBatch(db);
+    
+    courtData.forEach(court => {
+        const courtRef = doc(db, "courts", court.id);
+        batch.set(courtRef, court);
+    });
+
+    try {
+        await batch.commit();
+        console.log("Initial courts seeded successfully.");
+    } catch (error) {
+        console.error("Error seeding courts:", error);
+    }
+};
 
 export default function CourtsPage() {
   const firestore = useFirestore();
+
+  useEffect(() => {
+    if (firestore) {
+      seedInitialCourts(firestore);
+    }
+  }, [firestore]);
+
   const courtsQuery = useMemoFirebase(() => collection(firestore, 'courts'), [firestore]);
   const { data: courts, isLoading } = useCollection<Court>(courtsQuery);
 
@@ -40,7 +77,7 @@ export default function CourtsPage() {
               ))
             ) : (
               <div className="text-center py-10 text-white/50">
-                <p>No courts found.</p>
+                <p>No courts found. Data might be seeding.</p>
               </div>
             )}
           </div>

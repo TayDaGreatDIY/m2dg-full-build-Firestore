@@ -28,15 +28,6 @@ export default function TopNav({ pageTitle }: TopNavProps) {
 
   const { data: user, isLoading: isUserDocLoading } = useDoc<AppUser>(userDocRef);
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      router.push('/login');
-    } catch (error) {
-      console.error("Error signing out:", error);
-    }
-  };
-
   return (
     <header className="flex items-center justify-between py-4 md:hidden">
        <div className="flex items-center gap-2">
@@ -69,10 +60,10 @@ const DesktopHeader = ({ pageTitle }: { pageTitle: string }) => {
 
     const handleLogout = async () => {
         try {
-        await signOut(auth);
-        router.push('/login');
+          await signOut(auth);
+          router.push('/login');
         } catch (error) {
-        console.error("Error signing out:", error);
+          console.error("Error signing out:", error);
         }
     };
     return (
