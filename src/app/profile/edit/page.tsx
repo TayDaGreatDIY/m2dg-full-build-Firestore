@@ -124,7 +124,6 @@ export default function EditProfilePage() {
 
       toast({ title: "Profile Updated!", description: "Your changes have been saved." });
       router.push(`/player/${authUser.uid}`);
-      router.refresh();
 
     } catch (error) {
       console.error("Error updating profile:", error);
