@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useChat } from 'ai/react';
 import { DesktopHeader } from '@/components/ui/TopNav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,17 +12,11 @@ import UserAvatar from '@/components/ui/UserAvatar';
 import { useUser } from '@/firebase';
 import { cn } from '@/lib/utils';
 
-// Define the shape of a message
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
 export default function AiTrainerPage() {
   const { user: authUser } = useUser();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+    api: '/api/ai-trainer',
+  });
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Function to scroll to the bottom of the chat
@@ -38,41 +33,6 @@ export default function AiTrainerPage() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
-
-    const userMessage: Message = { role: 'user', content: input };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-
-    try {
-      const response = await fetch('/api/ai-trainer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ reply: 'An unknown error occurred.' }));
-        throw new Error(errorData.reply || 'The AI coach is unavailable right now. Please try again later.');
-      }
-      
-      const data = await response.json();
-      const assistantMessage: Message = { role: 'assistant', content: data.reply };
-      setMessages((prev) => [...prev, assistantMessage]);
-
-    } catch (error: any) {
-      const errorMessage: Message = {
-        role: 'assistant',
-        content: error.message || "I'm having trouble connecting. Please try again.",
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <div className="flex flex-col h-full">
@@ -131,7 +91,7 @@ export default function AiTrainerPage() {
           <form onSubmit={handleSubmit} className="flex items-center gap-2">
             <Input
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={handleInputChange}
               placeholder="Ask your coach for a workout plan..."
               className="flex-1"
               autoComplete="off"
