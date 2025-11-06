@@ -1,5 +1,4 @@
 
-
 import { Timestamp } from "firebase/firestore";
 
 export type User = {
@@ -8,6 +7,7 @@ export type User = {
   username: string;
   avatarURL: string; // Changed from photoURL
   aboutMe?: string;
+  role?: 'admin'; // Add role for admin access
   xp: number;
   winStreak: number;
   trainingStreak: number;
@@ -62,7 +62,7 @@ export type Court = {
   name: string;
   city: string;
   address: string;
-  status: string;
+  statusTag: string;
   img?: string; // Image is optional now
 };
 

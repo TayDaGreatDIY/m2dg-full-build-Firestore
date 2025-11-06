@@ -1,19 +1,77 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
+    // Helper function to check if a user has a specific role
+    function hasRole(role) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    // Default deny all reads and writes
     match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2025, 11, 25);
+      allow read, write: if false;
+    }
+
+    // USERS
+    // Allow users to read their own profile
+    // Allow users to update their own profile (but not change their role)
+    // Allow admins to read/write any user profile
+    match /users/{userId} {
+      allow read: if request.auth.uid == userId || hasRole('admin');
+      allow create: if request.auth.uid == userId;
+      allow update: if (request.auth.uid == userId && !('role' in request.resource.data)) || hasRole('admin');
+      allow delete: if hasRole('admin');
+    }
+    
+    // TRAINING SESSIONS
+    // Allow users to create, read, update, delete their own training sessions
+    match /users/{userId}/training_sessions/{sessionId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+    
+    // NOTIFICATIONS
+    // Allow users to read and write (mark as read) their own notifications
+    match /users/{userId}/notifications/{notificationId} {
+        allow read, write: if request.auth.uid == userId;
+    }
+
+    // COURTS
+    // Allow anyone to read court data
+    // Allow only admins to create, update, or delete courts
+    match /courts/{courtId} {
+      allow read: if true;
+      allow write: if hasRole('admin');
+    }
+
+    // CHECK-INS & RUNS (Subcollections of Courts)
+    // Allow any authenticated user to create/delete their own check-in or run
+    match /courts/{courtId}/checkins/{checkinId} {
+        allow read: if true;
+        allow create, delete: if request.auth != null && request.auth.uid == checkinId;
+    }
+    
+    match /courts/{courtId}/runs/{runId} {
+        allow read: if true;
+        allow create: if request.auth != null && request.resource.data.hostUid == request.auth.uid;
+        allow delete: if request.auth != null && get(/databases/$(database)/documents/courts/$(courtId)/runs/$(runId)).data.hostUid == request.auth.uid || hasRole('admin');
+    }
+
+
+    // CHATS & MESSAGES
+    // Allow users to read/write chats they are a member of
+    match /chats/{chatId} {
+      allow read, write: if request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.memberIds;
+    }
+    match /chats/{chatId}/messages/{messageId} {
+      allow read, write: if request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.memberIds;
+    }
+    
+    // FEED (Placeholder - to be defined)
+    match /feed_posts/{postId} {
+        allow read: if true;
+        allow write: if request.auth != null; // Simplistic rule for now
     }
   }
 }
