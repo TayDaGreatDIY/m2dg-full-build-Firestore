@@ -12,7 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -31,50 +30,10 @@ const courtSchema = z.object({
 export default function AdminPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const courtsQuery = useMemoFirebase(() => collection(firestore, 'courts'), [firestore]);
   const { data: courts, isLoading } = useCollection<Court>(courtsQuery);
   
-  const form = useForm<z.infer<typeof courtSchema>>({
-    resolver: zodResolver(courtSchema),
-    defaultValues: { name: "", city: "", address: "", statusTag: "", img: "" },
-  });
-
-  const onSubmit = async (values: z.infer<typeof courtSchema>, courtId?: string) => {
-    setIsSubmitting(true);
-    try {
-      if (courtId) {
-        // Update existing court
-        const courtRef = doc(firestore, "courts", courtId);
-        await updateDoc(courtRef, values);
-        toast({ title: "Court Updated!", description: `${values.name} has been updated.` });
-      } else {
-        // Add new court
-        await addDoc(collection(firestore, "courts"), values);
-        toast({ title: "Court Added!", description: `${values.name} has been added.` });
-        form.reset();
-      }
-      setIsDialogOpen(false);
-    } catch (error) {
-      console.error("Error saving court:", error);
-      toast({ variant: "destructive", title: "Error", description: "Could not save court." });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const onDelete = async (courtId: string) => {
-    try {
-      await deleteDoc(doc(firestore, "courts", courtId));
-      toast({ title: "Court Deleted", description: "The court has been removed." });
-    } catch (error) {
-      console.error("Error deleting court:", error);
-      toast({ variant: "destructive", title: "Error", description: "Could not delete court." });
-    }
-  };
-
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -83,11 +42,6 @@ export default function AdminPage() {
             <p className="text-white/60">Add, edit, or delete court information.</p>
         </div>
         <CourtFormDialog
-          form={form}
-          onSubmit={onSubmit}
-          isSubmitting={isSubmitting}
-          isOpen={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
           trigger={<Button><PlusCircle size={16} /> Add Court</Button>}
         />
       </div>
@@ -120,29 +74,10 @@ export default function AdminPage() {
                   <TableCell>{court.statusTag}</TableCell>
                   <TableCell className="text-right space-x-2">
                     <CourtFormDialog
-                        form={form}
-                        onSubmit={(values) => onSubmit(values, court.id)}
-                        isSubmitting={isSubmitting}
-                        defaultValues={court}
+                        court={court}
                         trigger={<Button variant="outline" size="icon"><Edit size={16} /></Button>}
                     />
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="icon"><Trash2 size={16} /></Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will permanently delete "{court.name}". This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => onDelete(court.id)}>Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <DeleteCourtDialog courtId={court.id} courtName={court.name} />
                   </TableCell>
                 </TableRow>
               ))
@@ -159,25 +94,56 @@ export default function AdminPage() {
 }
 
 // Reusable Dialog Form Component
-function CourtFormDialog({ form, onSubmit, isSubmitting, trigger, defaultValues, isOpen, onOpenChange }: any) {
+function CourtFormDialog({ trigger, court }: { trigger: React.ReactNode, court?: Court }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isOpen, setIsOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     
+    const form = useForm<z.infer<typeof courtSchema>>({
+      resolver: zodResolver(courtSchema),
+      defaultValues: court || { name: "", city: "", address: "", statusTag: "", img: "" },
+    });
+
     const handleOpenChange = (open: boolean) => {
         if (open) {
-            form.reset(defaultValues || { name: "", city: "", address: "", statusTag: "", img: "" });
+            form.reset(court || { name: "", city: "", address: "", statusTag: "", img: "" });
         }
-        if (onOpenChange) onOpenChange(open);
+        setIsOpen(open);
+    };
+    
+    const onSubmit = async (values: z.infer<typeof courtSchema>) => {
+      setIsSubmitting(true);
+      try {
+        if (court) {
+          // Update existing court
+          const courtRef = doc(firestore, "courts", court.id);
+          await updateDoc(courtRef, values);
+          toast({ title: "Court Updated!", description: `${values.name} has been updated.` });
+        } else {
+          // Add new court
+          await addDoc(collection(firestore, "courts"), values);
+          toast({ title: "Court Added!", description: `${values.name} has been added.` });
+        }
+        form.reset();
+        handleOpenChange(false);
+      } catch (error) {
+        console.error("Error saving court:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not save court." });
+      } finally {
+        setIsSubmitting(false);
+      }
     };
 
-    const dialogProps = isOpen !== undefined ? { open: isOpen, onOpenChange: handleOpenChange } : { onOpenChange: handleOpenChange };
 
     return (
-        <Dialog {...dialogProps}>
+        <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
             <DialogContent className="sm:max-w-[425px] bg-card border-white/10">
                  <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <DialogHeader>
-                            <DialogTitle>{defaultValues ? 'Edit Court' : 'Add New Court'}</DialogTitle>
+                            <DialogTitle>{court ? 'Edit Court' : 'Add New Court'}</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <FormField control={form.control} name="name" render={({ field }) => (
@@ -211,3 +177,39 @@ function CourtFormDialog({ form, onSubmit, isSubmitting, trigger, defaultValues,
     );
 }
 
+function DeleteCourtDialog({ courtId, courtName }: { courtId: string; courtName: string }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    const onDelete = async () => {
+        try {
+            await deleteDoc(doc(firestore, "courts", courtId));
+            toast({ title: "Court Deleted", description: "The court has been removed." });
+        } catch (error) {
+            console.error("Error deleting court:", error);
+            toast({ variant: "destructive", title: "Error", description: "Could not delete court." });
+        }
+    };
+    
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="icon"><Trash2 size={16} /></Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will permanently delete "{courtName}". This action cannot be undone.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={onDelete}>Delete</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
+}
+
+    
