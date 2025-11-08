@@ -58,7 +58,10 @@ export default function AdminCompetitions() {
   const firestore = useFirestore();
   const { user: adminUser } = useUser();
 
-  const competitionsQuery = useMemoFirebase(() => query(collection(firestore, 'competitions'), orderBy('date', 'desc')), [firestore]);
+  const competitionsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'competitions'), orderBy('date', 'desc'));
+  }, [firestore]);
   const { data: competitions, isLoading } = useCollection<Competition>(competitionsQuery);
   
   return (
@@ -142,7 +145,10 @@ function CompetitionFormDialog({ trigger, competition, onFormSubmit }: { trigger
     const [isOpen, setIsOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    const courtsQuery = useMemoFirebase(() => collection(firestore, 'courts'), [firestore]);
+    const courtsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'courts');
+    }, [firestore]);
     const { data: courts } = useCollection<Court>(courtsQuery);
     
     const form = useForm<z.infer<typeof competitionSchema>>({
@@ -194,6 +200,11 @@ function CompetitionFormDialog({ trigger, competition, onFormSubmit }: { trigger
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <DialogHeader>
                             <DialogTitle>{competition ? 'Edit Competition' : 'Add New Competition'}</DialogTitle>
+                             <VisuallyHidden>
+                              <DialogDescription>
+                                {competition ? 'Update the details for this competition.' : 'Fill in the details for the new competition.'}
+                              </DialogDescription>
+                           </VisuallyHidden>
                         </DialogHeader>
                         <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
                             <FormField control={form.control} name="title" render={({ field }) => (

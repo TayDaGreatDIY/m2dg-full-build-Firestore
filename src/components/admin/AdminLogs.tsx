@@ -14,7 +14,10 @@ import { Badge } from "@/components/ui/badge";
 export default function AdminLogs() {
   const firestore = useFirestore();
 
-  const logsQuery = useMemoFirebase(() => query(collection(firestore, 'admin_logs'), orderBy('timestamp', 'desc')), [firestore]);
+  const logsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'admin_logs'), orderBy('timestamp', 'desc'));
+  }, [firestore]);
   const { data: logs, isLoading } = useCollection<AdminLog>(logsQuery);
   
   return (

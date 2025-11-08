@@ -100,7 +100,10 @@ export default function AdminPlayers() {
   const firestore = useFirestore();
   const { user: adminUser } = useAdminUser();
   const usersQuery = useMemoFirebase(
-    () => query(collection(firestore, "users")),
+    () => {
+        if (!firestore) return null;
+        return query(collection(firestore, "users"))
+    },
     [firestore]
   );
   
@@ -134,7 +137,7 @@ export default function AdminPlayers() {
              {isLoading ? (
               [...Array(5)].map((_, i) => (
                 <TableRow key={`players-skeleton-${i}`}>
-                  <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
+                   <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
                 </TableRow>
               ))
             ) : players && players.length > 0 ? (
@@ -276,7 +279,9 @@ function PlayerEditDialog({
           >
             <DialogHeader>
                 <DialogTitle>Edit Player: {player.displayName}</DialogTitle>
-                <VisuallyHidden><DialogDescription>Update player details below.</DialogDescription></VisuallyHidden>
+                 <VisuallyHidden>
+                    <DialogDescription>Update player details below.</DialogDescription>
+                 </VisuallyHidden>
             </DialogHeader>
 
             <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
@@ -367,4 +372,3 @@ function PlayerEditDialog({
     </Dialog>
   );
 }
-

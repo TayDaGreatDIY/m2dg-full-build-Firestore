@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { PlusCircle, Edit, Trash2, Loader2, Check, X } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -51,7 +51,10 @@ export default function AdminChallenges() {
   const firestore = useFirestore();
   const { user: adminUser } = useUser();
 
-  const challengesQuery = useMemoFirebase(() => collection(firestore, 'challenges'), [firestore]);
+  const challengesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'challenges');
+  }, [firestore]);
   const { data: challenges, isLoading } = useCollection<Challenge>(challengesQuery);
   
   return (
@@ -135,7 +138,6 @@ function ChallengeFormDialog({ trigger, challenge, onFormSubmit }: { trigger: Re
     
     const form = useForm<z.infer<typeof challengeSchema>>({
       resolver: zodResolver(challengeSchema),
-      defaultValues: challenge || { title: "", description: "", rewardXP: 100, approved: false, featured: false },
     });
     
     useEffect(() => {
@@ -177,7 +179,12 @@ function ChallengeFormDialog({ trigger, challenge, onFormSubmit }: { trigger: Re
                  <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <DialogHeader>
-                            <DialogTitle>{challenge ? 'Edit Challenge' : 'Add New Challenge'}</DialogTitle>
+                          <DialogTitle>{challenge ? 'Edit Challenge' : 'Add New Challenge'}</DialogTitle>
+                           <VisuallyHidden>
+                              <DialogDescription>
+                                {challenge ? 'Update the details for this challenge.' : 'Fill in the details for the new challenge.'}
+                              </DialogDescription>
+                           </VisuallyHidden>
                         </DialogHeader>
                         <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
                             <FormField control={form.control} name="title" render={({ field }) => (

@@ -3,7 +3,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, addDoc, updateDoc, deleteDoc, doc, writeBatch, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import type { Court } from "@/lib/types";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,7 +13,7 @@ import { useUser } from "@/firebase";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -52,14 +52,17 @@ async function logAdminAction(firestore: any, user: any, action: string, targetT
 export default function AdminCourts() {
   const firestore = useFirestore();
   const { user: adminUser } = useUser();
-  const { toast } = useToast();
 
-  const courtsQuery = useMemoFirebase(() => collection(firestore, 'courts'), [firestore]);
+  const courtsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'courts');
+  }, [firestore]);
   const { data: courts, isLoading } = useCollection<Court>(courtsQuery);
   
   const sortedCourts = useMemo(() => {
     if (!courts) return [];
-    return courts.slice().sort((a, b) => (b.verified ? 1 : 0) - (a.verified ? 1 : 0));
+    // This will sort by `verified` status, but you might want more complex sorting
+    return courts.slice().sort((a, b) => (b.verified ? 1 : 0) - (a.verified ? 1 : 0) || a.name.localeCompare(b.name));
   }, [courts]);
   
   return (
@@ -138,7 +141,6 @@ function CourtFormDialog({ trigger, court, onFormSubmit }: { trigger: React.Reac
     
     const form = useForm<z.infer<typeof courtSchema>>({
       resolver: zodResolver(courtSchema),
-      defaultValues: court || { name: "", city: "", address: "", statusTag: "", img: "", verified: false, flagCount: 0 },
     });
     
     useEffect(() => {
@@ -176,9 +178,12 @@ function CourtFormDialog({ trigger, court, onFormSubmit }: { trigger: React.Reac
                  <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <DialogHeader>
-                          <VisuallyHidden><DialogTitle>{court ? 'Edit Court' : 'Add New Court'}</DialogTitle></VisuallyHidden>
                           <DialogTitle>{court ? 'Edit Court' : 'Add New Court'}</DialogTitle>
-                          <DialogDescription />
+                           <VisuallyHidden>
+                            <DialogDescription>
+                                {court ? 'Update the details for this court.' : 'Fill in the details for the new court.'}
+                            </DialogDescription>
+                           </VisuallyHidden>
                         </DialogHeader>
                         <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
                             <FormField control={form.control} name="name" render={({ field }) => (
