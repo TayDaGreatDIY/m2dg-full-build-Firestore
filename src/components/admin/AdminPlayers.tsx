@@ -178,6 +178,7 @@ function PlayerEditDialog({ trigger, player, onFormSubmit }: { trigger: React.Re
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <DialogHeader>
                           <DialogTitle>Edit Player: {player.displayName}</DialogTitle>
+                          <VisuallyHidden><DialogDescription>Update player details below.</DialogDescription></VisuallyHidden>
                         </DialogHeader>
                         <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
                              <FormField control={form.control} name="displayName" render={({ field }) => (
@@ -233,3 +234,4 @@ function PlayerEditDialog({ trigger, player, onFormSubmit }: { trigger: React.Re
     );
 }
 
+    
