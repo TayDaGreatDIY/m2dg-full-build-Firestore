@@ -2,7 +2,7 @@
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUser, useDoc, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { doc, collection, setDoc, deleteDoc, serverTimestamp, query, orderBy, getDoc, where, getDocs } from 'firebase/firestore';
 import Image from 'next/image';
@@ -12,11 +12,29 @@ import { Badge } from '@/components/ui/badge';
 import UserAvatar from '@/components/ui/UserAvatar';
 import HostRunDialog from '@/components/courts/HostRunDialog';
 import type { Court, CheckIn, Run, User } from '@/lib/types';
-import { MapPin, Users, PlusCircle, LogOut, ChevronLeft } from 'lucide-react';
+import { MapPin, Users, PlusCircle, LogOut, ChevronLeft, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { handleCheckInXPAndStreak } from '@/lib/xpSystem';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+// Haversine formula to calculate distance between two lat/lng points
+const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3; // metres
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c; // in metres
+}
 
 export default function CourtDetailPage() {
   const params = useParams();
@@ -25,8 +43,14 @@ export default function CourtDetailPage() {
   const { user: currentUser } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const [isHostRunOpen, setIsHostRunOpen] = useState(false);
+  const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [distance, setDistance] = useState<number | null>(null);
+  
+  const CHECK_IN_RADIUS_METERS = 160; // Approx 0.1 miles
 
   // Fetch court data
   const courtDocRef = useMemoFirebase(() => {
@@ -35,10 +59,33 @@ export default function CourtDetailPage() {
   }, [firestore, courtId]);
   const { data: court, isLoading: isCourtLoading } = useDoc<Court>(courtDocRef);
 
+  // Get user's location
+  useEffect(() => {
+    if (isMobile && court) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation({ latitude, longitude });
+          if(court?.latitude && court?.longitude) {
+            const dist = getDistanceInMeters(latitude, longitude, court.latitude, court.longitude);
+            setDistance(dist);
+          }
+          setLocationError(null);
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          setLocationError("Location required to check in. Enable location services and try again.");
+          setDistance(null);
+        },
+        { enableHighAccuracy: true }
+      );
+    }
+  }, [isMobile, court]);
+
+
   // Fetch check-ins
   const checkinsQuery = useMemoFirebase(() => {
     if (!firestore || !courtId) return null;
-    // We get the user document along with the check-in to display avatar/name
     return query(collection(firestore, 'courts', courtId, 'checkins'), orderBy('timestamp', 'desc'));
   }, [firestore, courtId]);
   const { data: checkins, isLoading: areCheckinsLoading } = useCollection<CheckIn>(checkinsQuery);
@@ -54,17 +101,22 @@ export default function CourtDetailPage() {
 
   const handleCheckIn = async () => {
     if (!currentUser || !courtId || !firestore) return;
+    
+    // Final client-side check for distance before writing to DB
+    if(distance === null || distance > CHECK_IN_RADIUS_METERS) {
+        toast({ variant: 'destructive', title: "Too Far to Check In", description: "You must be within 160 meters of the court."});
+        return;
+    }
 
-    // Prevent duplicate check-in within 4 hours
-    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
     const recentCheckinQuery = query(
         collection(firestore, 'courts', courtId, 'checkins'),
         where('userId', '==', currentUser.uid),
-        where('timestamp', '>', fourHoursAgo)
+        where('timestamp', '>', twoHoursAgo)
     );
     const recentCheckinSnap = await getDocs(recentCheckinQuery);
     if (!recentCheckinSnap.empty) {
-        toast({ variant: 'destructive', title: "Already Checked In", description: "You can only check in once every 4 hours."});
+        toast({ variant: 'destructive', title: "Already Checked In", description: "You can only check in at this court once every 2 hours."});
         return;
     }
 
@@ -82,14 +134,13 @@ export default function CourtDetailPage() {
       await setDoc(checkinRef, {
         userId: currentUser.uid,
         timestamp: serverTimestamp(),
-        user: { // Denormalizing user data for display
+        user: { 
             uid: currentUser.uid,
             displayName: userProfile.displayName,
             avatarURL: userProfile.avatarURL,
         }
       });
 
-      // Handle XP and Streak logic
       await handleCheckInXPAndStreak(firestore, userProfile);
 
       toast({ title: "You're checked in!", description: `+25 XP! You are now checked in at ${court?.name}.` });
@@ -113,6 +164,7 @@ export default function CourtDetailPage() {
 
 
   const isLoading = isCourtLoading || areCheckinsLoading || areRunsLoading;
+  const canCheckIn = isMobile && distance !== null && distance <= CHECK_IN_RADIUS_METERS;
 
   if (isLoading) {
     return (
@@ -153,6 +205,44 @@ export default function CourtDetailPage() {
       </div>
     );
   }
+  
+  const getCheckInAlert = () => {
+      if (!isMobile) {
+          return (
+             <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Desktop Browser Detected</AlertTitle>
+                <AlertDescription>
+                    Check-ins are only available from your mobile device at the court.
+                </AlertDescription>
+            </Alert>
+          )
+      }
+      if (locationError) {
+           return (
+             <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Location Required</AlertTitle>
+                <AlertDescription>
+                    {locationError}
+                </AlertDescription>
+            </Alert>
+          )
+      }
+      if (distance !== null && distance > CHECK_IN_RADIUS_METERS) {
+           return (
+             <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Too Far From Court</AlertTitle>
+                <AlertDescription>
+                    The players don’t see you on the court. Don’t be scared to compete — show up and earn your XP!
+                    <span className="text-xs block text-white/50">(You are {Math.round(distance)}m away)</span>
+                </AlertDescription>
+            </Alert>
+          )
+      }
+      return null;
+  }
 
   return (
     <>
@@ -183,25 +273,30 @@ export default function CourtDetailPage() {
                       <MapPin size={14} />
                       <p>{court.address}</p>
                   </div>
+                  {distance !== null && <p className="text-xs text-white/50 mt-2">You are {Math.round(distance)} meters away</p>}
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                  {isCheckedIn ? (
-                       <Button variant="outline" onClick={handleCheckOut}>
-                          <LogOut size={16}/>
-                          Check Out
+              <div className="space-y-2">
+                 {getCheckInAlert()}
+                  <div className="grid grid-cols-2 gap-2">
+                      {isCheckedIn ? (
+                           <Button variant="outline" onClick={handleCheckOut}>
+                              <LogOut size={16}/>
+                              Check Out
+                          </Button>
+                      ) : (
+                          <Button variant="primary" onClick={handleCheckIn} disabled={!currentUser || !canCheckIn}>
+                              <Users size={16}/>
+                              Check In
+                          </Button>
+                      )}
+                      <Button variant="secondary" onClick={() => setIsHostRunOpen(true)} disabled={!currentUser}>
+                         <PlusCircle size={16}/>
+                         Host a Run
                       </Button>
-                  ) : (
-                      <Button variant="primary" onClick={handleCheckIn} disabled={!currentUser}>
-                          <Users size={16}/>
-                          Check In
-                      </Button>
-                  )}
-                  <Button variant="secondary" onClick={() => setIsHostRunOpen(true)} disabled={!currentUser}>
-                     <PlusCircle size={16}/>
-                     Host a Run
-                  </Button>
+                  </div>
               </div>
+
 
               <div className="bg-card p-4 rounded-xl border border-white/10">
                   <h2 className="font-bold font-headline text-lg mb-3">Who's Here ({checkins?.length || 0})</h2>
