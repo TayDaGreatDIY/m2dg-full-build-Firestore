@@ -1,12 +1,11 @@
 
 "use client";
 
+import { useState, useEffect } from "react";
 import { useUser, useDoc, useMemoFirebase, useCollection, useFirestore } from "@/firebase";
 import { DesktopHeader } from "@/components/ui/TopNav";
 import UserAvatar from "@/components/ui/UserAvatar";
 import StatTile from "@/components/ui/StatTile";
-import SectionCard from "@/components/ui/SectionCard";
-import { MapPin, Dumbbell, Trophy, MessageSquare, ShieldCheck, Loader2, PlayCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { doc, collection, query, where, orderBy, limit } from "firebase/firestore";
 import type { User as AppUser, Challenge, Competition, CheckIn } from "@/lib/types";
@@ -31,22 +30,37 @@ const CompetitionCard = ({ competition }: { competition: Competition }) => (
     </div>
 );
 
-const CheckInFeedCard = ({ checkIn }: { checkIn: CheckIn }) => (
-    <div className="bg-background/50 p-3 rounded-lg border border-white/10 flex items-center gap-3">
-        <UserAvatar src={checkIn.user.avatarURL} name={checkIn.user.displayName} size={32} />
-        <div>
-            <p className="text-sm text-white/80">
-                <span className="font-bold">@{checkIn.user.displayName}</span> checked in.
-            </p>
-            <p className="text-xs text-white/50">{checkIn.timestamp ? formatDistanceToNow(checkIn.timestamp.toDate(), { addSuffix: true }) : ''}</p>
+const CheckInFeedCard = ({ checkIn }: { checkIn: CheckIn }) => {
+    const [timeAgo, setTimeAgo] = useState('');
+
+    useEffect(() => {
+        if (checkIn.timestamp) {
+            setTimeAgo(formatDistanceToNow(checkIn.timestamp.toDate(), { addSuffix: true }));
+        }
+    }, [checkIn.timestamp]);
+
+    return (
+        <div className="bg-background/50 p-3 rounded-lg border border-white/10 flex items-center gap-3">
+            <UserAvatar src={checkIn.user.avatarURL} name={checkIn.user.displayName} size={32} />
+            <div>
+                <p className="text-sm text-white/80">
+                    <span className="font-bold">@{checkIn.user.displayName}</span> checked in.
+                </p>
+                {timeAgo && <p className="text-xs text-white/50">{timeAgo}</p>}
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 
 export default function DashboardPage() {
   const { user: authUser, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !authUser) return null;
@@ -78,6 +92,29 @@ export default function DashboardPage() {
   const xpProgress = rankInfo ? (user.xp - rankInfo.minXp) / (rankInfo.nextRankXp - rankInfo.minXp) * 100 : 0;
 
   const loading = isUserLoading || isUserDocLoading || areChallengesLoading || areCompetitionsLoading || areCheckinsLoading;
+
+  if (!hasMounted) {
+    // Render a loading state or nothing on the server and initial client render
+    return (
+        <div className="flex flex-col min-h-screen">
+            <DesktopHeader pageTitle="Dashboard" />
+            <main className="flex-1 max-w-md mx-auto w-full px-4 pb-24 space-y-6">
+            <Skeleton className="h-24 w-full" />
+            <div className="grid grid-cols-2 gap-4">
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+            </div>
+            <div className="space-y-2">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+            </div>
+            </main>
+      </div>
+    );
+  }
 
   if (loading && !user) {
     return (
