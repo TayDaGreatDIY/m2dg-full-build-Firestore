@@ -4,7 +4,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useUser, useDoc, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
-import { doc, collection, setDoc, deleteDoc, serverTimestamp, query, orderBy, getDoc } from 'firebase/firestore';
+import { doc, collection, setDoc, deleteDoc, serverTimestamp, query, orderBy, getDoc, where, getDocs } from 'firebase/firestore';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { MapPin, Users, PlusCircle, LogOut, ChevronLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { handleCheckInXPAndStreak } from '@/lib/xpSystem';
 
 export default function CourtDetailPage() {
   const params = useParams();
@@ -38,7 +39,7 @@ export default function CourtDetailPage() {
   const checkinsQuery = useMemoFirebase(() => {
     if (!firestore || !courtId) return null;
     // We get the user document along with the check-in to display avatar/name
-    return collection(firestore, 'courts', courtId, 'checkins');
+    return query(collection(firestore, 'courts', courtId, 'checkins'), orderBy('timestamp', 'desc'));
   }, [firestore, courtId]);
   const { data: checkins, isLoading: areCheckinsLoading } = useCollection<CheckIn>(checkinsQuery);
 
@@ -53,10 +54,24 @@ export default function CourtDetailPage() {
 
   const handleCheckIn = async () => {
     if (!currentUser || !courtId || !firestore) return;
+
+    // Prevent duplicate check-in within 4 hours
+    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+    const recentCheckinQuery = query(
+        collection(firestore, 'courts', courtId, 'checkins'),
+        where('userId', '==', currentUser.uid),
+        where('timestamp', '>', fourHoursAgo)
+    );
+    const recentCheckinSnap = await getDocs(recentCheckinQuery);
+    if (!recentCheckinSnap.empty) {
+        toast({ variant: 'destructive', title: "Already Checked In", description: "You can only check in once every 4 hours."});
+        return;
+    }
+
     const checkinRef = doc(firestore, 'courts', courtId, 'checkins', currentUser.uid);
     
-    // We need to fetch the current user's profile to store denormalized data
-    const userDocSnap = await getDoc(doc(firestore, 'users', currentUser.uid));
+    const userDocRef = doc(firestore, 'users', currentUser.uid);
+    const userDocSnap = await getDoc(userDocRef);
     if (!userDocSnap.exists()) {
         toast({ variant: 'destructive', title: "Check-in failed", description: "Could not find your user profile." });
         return;
@@ -73,7 +88,11 @@ export default function CourtDetailPage() {
             avatarURL: userProfile.avatarURL,
         }
       });
-      toast({ title: "You're checked in!", description: `You are now checked in at ${court?.name}.` });
+
+      // Handle XP and Streak logic
+      await handleCheckInXPAndStreak(firestore, userProfile);
+
+      toast({ title: "You're checked in!", description: `+25 XP! You are now checked in at ${court?.name}.` });
     } catch (error) {
       console.error("Error checking in:", error);
       toast({ variant: 'destructive', title: "Check-in failed" });

@@ -34,6 +34,7 @@ export type User = {
   homeCourtId?: string;
   city?: string;
   createdAt?: Timestamp;
+  lastCheckIn?: Timestamp;
   badges?: Badge[];
 };
 
@@ -94,6 +95,7 @@ export type Court = {
   city: string;
   address: string;
   status: string;
+  statusTag: string;
   img?: string;
   verified?: boolean;
   flagCount?: number;

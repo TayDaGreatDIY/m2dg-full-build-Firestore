@@ -1,4 +1,7 @@
 
+import { doc, updateDoc, increment, serverTimestamp, getDoc, Firestore } from "firebase/firestore";
+import type { User } from './types';
+
 export type Rank = {
     title: string;
     minXp: number;
@@ -38,7 +41,7 @@ export function getPlayerRank(xp: number): Rank {
 
 /**
  * Safely increments a user's XP in Firestore.
- * This is a placeholder for a secure, server-side implementation (e.g., Cloud Function).
+ * This can be called from a client-side event.
  * @param firestore Firestore instance.
  * @param userId The ID of the user to update.
  * @param amount The amount of XP to add.
@@ -48,7 +51,6 @@ export async function incrementXP(firestore: any, userId: string, amount: number
         console.error("Missing parameters for incrementXP");
         return;
     }
-    const { doc, updateDoc, increment } = await import("firebase/firestore");
     const userRef = doc(firestore, 'users', userId);
 
     try {
@@ -57,5 +59,49 @@ export async function incrementXP(firestore: any, userId: string, amount: number
         });
     } catch (error) {
         console.error("Error incrementing XP:", error);
+    }
+}
+
+
+/**
+ * Handles the logic for updating XP and training streaks upon a successful check-in.
+ * @param firestore - The Firestore instance.
+ * @param user - The current user object from Firestore.
+ */
+export async function handleCheckInXPAndStreak(firestore: Firestore, user: User) {
+    if (!firestore || !user) return;
+
+    const userRef = doc(firestore, 'users', user.uid);
+    const today = new Date();
+    const lastCheckInDate = user.lastCheckIn?.toDate();
+
+    let newStreak = user.trainingStreak || 0;
+
+    if (lastCheckInDate) {
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        
+        // Check if the last check-in was yesterday
+        if (lastCheckInDate.toDateString() === yesterday.toDateString()) {
+            newStreak++;
+        }
+        // If the last check-in was NOT today, reset streak to 1
+        else if (lastCheckInDate.toDateString() !== today.toDateString()) {
+            newStreak = 1; 
+        }
+    } else {
+        // First check-in ever
+        newStreak = 1;
+    }
+
+    try {
+        await updateDoc(userRef, {
+            xp: increment(25),
+            trainingStreak: newStreak,
+            lastCheckIn: serverTimestamp(),
+        });
+        console.log(`User ${user.uid} XP and streak updated.`);
+    } catch (error) {
+        console.error("Error updating XP and streak:", error);
     }
 }

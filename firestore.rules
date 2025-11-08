@@ -12,10 +12,14 @@ service cloud.firestore {
 
     // Rules for the Users collection
     match /users/{userId} {
-      // Admins can read and write any user document.
-      // A user can read or update their OWN document.
-      allow read, update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      // A user can read their OWN document. Admins can read any user document.
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
       
+      // Allow users to update specific, safe fields on their own document
+      allow update: if request.auth != null && request.auth.uid == userId &&
+                      request.resource.data.diff(resource.data).affectedKeys()
+                      .hasOnly(['displayName', 'username', 'aboutMe', 'homeCourtId', 'homeCourt', 'city', 'avatarURL', 'xp', 'trainingStreak', 'lastCheckIn']);
+
       // Any authenticated user can create their own user document upon sign-up.
       allow create: if request.auth != null;
 
@@ -52,11 +56,20 @@ service cloud.firestore {
     }
 
     // Rules for court subcollections (runs, check-ins)
-    match /courts/{courtId}/{subcollection}/{docId} {
-        // Any authenticated user can read check-ins and runs.
+    match /courts/{courtId}/checkins/{checkinId} {
+        // Any authenticated user can read check-ins.
         allow read: if request.auth != null;
-        // Any authenticated user can create/update their own check-in or a run.
-        allow write: if request.auth != null;
+        // Any authenticated user can create/delete their own check-in.
+        allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+        allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+     match /courts/{courtId}/runs/{runId} {
+        // Any authenticated user can read runs.
+        allow read: if request.auth != null;
+        // Any authenticated user can create their own run.
+        allow create: if request.auth != null && request.resource.data.hostUid == request.auth.uid;
+        // Only the host or an admin can delete a run.
+        allow delete: if request.auth != null && (resource.data.hostUid == request.auth.uid || isAdmin());
     }
     
     // Rules for Chat collections
