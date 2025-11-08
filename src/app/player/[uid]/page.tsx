@@ -33,13 +33,14 @@ export default function PlayerProfilePage() {
 
   // Fetch player's training logs
   const trainingQuery = useMemoFirebase(() => {
-    if (!firestore || !uid) return null;
+    // CRITICAL FIX: Ensure 'uid' is available before creating the query
+    if (!firestore || !uid) return null; 
     return query(
       collection(firestore, "users", uid, "training_sessions"),
       orderBy("createdAt", "desc"),
       limit(10)
     );
-  }, [firestore, uid]);
+  }, [firestore, uid]); // Dependency on 'uid' is key
   const { data: trainingLogs, isLoading: isTrainingLoading } = useCollection<TrainingLog>(trainingQuery);
 
   const [formattedLogs, setFormattedLogs] = useState<any[]>([]);
