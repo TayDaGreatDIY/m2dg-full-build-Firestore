@@ -1,13 +1,11 @@
-
 "use client";
 
 import { useState } from "react";
-import { useFirestore } from "@/firebase";
-import { updateDoc, doc, serverTimestamp } from "firebase/firestore";
-import type { UserWithId } from "@/lib/types";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/firebase/firebase";
+import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
@@ -43,21 +41,20 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 const playerSchema = z.object({
   displayName: z.string().min(2, "Display name is required"),
   username: z.string().min(2, "Username is required"),
-  email: z.string().email("Invalid email address"),
-  role: z.enum(["player", "coach", "moderator", "admin"]),
-  status: z.enum(["active", "suspended"]),
   xp: z.coerce.number().min(0),
   trainingStreak: z.coerce.number().min(0),
   winStreak: z.coerce.number().min(0),
+  role: z.enum(["player", "coach", "moderator", "admin"]),
+  status: z.enum(["active", "suspended"]),
 });
 
 // ---------------- Player Edit Dialog ----------------
 
 interface EditPlayerModalProps {
-    player: UserWithId;
-    isOpen: boolean;
-    onClose: () => void;
-    onFormSubmit: (action: string, id: string) => void;
+  player: any;
+  isOpen: boolean;
+  onClose: () => void;
+  onFormSubmit?: (action: string, id: string) => void;
 }
 
 export default function EditPlayerModal({
@@ -66,7 +63,6 @@ export default function EditPlayerModal({
   onClose,
   onFormSubmit,
 }: EditPlayerModalProps) {
-  const firestore = useFirestore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -75,45 +71,40 @@ export default function EditPlayerModal({
     defaultValues: {
       displayName: player?.displayName ?? "",
       username: player?.username ?? "",
-      email: player?.email ?? "",
-      role: player?.role ?? "player",
-      status: player?.status ?? "active",
       xp: player?.xp ?? 0,
       trainingStreak: player?.trainingStreak ?? 0,
       winStreak: player?.winStreak ?? 0,
+      role: player?.role ?? "player",
+      status: player?.status ?? "active",
     },
   });
 
+  // ✅ Submit handler
   const onSubmit = async (values: z.infer<typeof playerSchema>) => {
     setIsSubmitting(true);
     try {
-      if (!player.id) throw new Error("Player ID is missing.");
-      console.log("Submitting player update to doc ID:", player.id, "with values:", values);
-      
-      const playerRef = doc(firestore, "users", player.id);
+      if (!player?.id) throw new Error("Player ID is missing.");
+
+      const playerRef = doc(db, "users", player.id);
       await updateDoc(playerRef, {
         ...values,
         updatedAt: serverTimestamp(),
       });
 
       toast({
-        title: "✅ Player Updated!",
-        description: `${values.displayName}'s profile has been updated.`,
+        title: "✅ Player Updated Successfully!",
+        description: `${values.displayName}'s profile changes were saved.`,
       });
 
-      onFormSubmit("update", player.id);
+      if (onFormSubmit) onFormSubmit("update", player.id);
       onClose();
     } catch (error: any) {
       console.error("Error updating player:", error);
-      const errorMessage =
-        error?.code === "permission-denied"
-          ? "Permission denied: only admins can update player data."
-          : error.message || "Failed to update player profile.";
-
       toast({
         variant: "destructive",
-        title: "Error",
-        description: errorMessage,
+        title: "Error Updating Player",
+        description:
+          error?.message || "An error occurred while saving player data.",
       });
     } finally {
       setIsSubmitting(false);
@@ -124,65 +115,145 @@ export default function EditPlayerModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md bg-card border-white/10">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4"
+          >
             <DialogHeader>
               <DialogTitle>Edit Player: {player.displayName}</DialogTitle>
               <VisuallyHidden>
                 <DialogDescription>
-                  Update player details below.
+                  Update player stats and details below.
                 </DialogDescription>
               </VisuallyHidden>
             </DialogHeader>
 
             <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
-                <FormField control={form.control} name="displayName" render={({ field }) => (
-                    <FormItem><FormLabel>Display Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                )}/>
-                <FormField control={form.control} name="username" render={({ field }) => (
-                    <FormItem><FormLabel>Username</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                )}/>
-                <FormField control={form.control} name="xp" render={({ field }) => (
-                    <FormItem><FormLabel>XP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-                )}/>
-                <FormField control={form.control} name="trainingStreak" render={({ field }) => (
-                    <FormItem><FormLabel>Training Streak</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-                )}/>
-                 <FormField control={form.control} name="winStreak" render={({ field }) => (
-                    <FormItem><FormLabel>Win Streak</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-                )}/>
-
-                <FormField control={form.control} name="role" render={({ field }) => (
-                    <FormItem><FormLabel>Role</FormLabel>
-                     <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
-                        <SelectContent>
-                            <SelectItem value="player">Player</SelectItem>
-                            <SelectItem value="coach">Coach</SelectItem>
-                            <SelectItem value="moderator">Moderator</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
+              <FormField
+                control={form.control}
+                name="displayName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Display Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="xp"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>XP</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="trainingStreak"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Training Streak</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="winStreak"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Win Streak</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="player">Player</SelectItem>
+                        <SelectItem value="coach">Coach</SelectItem>
+                        <SelectItem value="moderator">Moderator</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
                     </Select>
-                    <FormMessage /></FormItem>
-                )}/>
-                <FormField control={form.control} name="status" render={({ field }) => (
-                    <FormItem><FormLabel>Status</FormLabel>
-                     <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
-                        <SelectContent>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="suspended">Suspended</SelectItem>
-                        </SelectContent>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="suspended">Suspended</SelectItem>
+                      </SelectContent>
                     </Select>
-                    <FormMessage /></FormItem>
-                )}/>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="secondary" onClick={onClose}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onClose}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="animate-spin" /> : "Save Changes"}
+                {isSubmitting ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  "Save Changes"
+                )}
               </Button>
             </DialogFooter>
           </form>
