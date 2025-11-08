@@ -21,6 +21,8 @@ export type User = {
   createdAt?: Timestamp;
 };
 
+export type UserWithId = User & { id: string };
+
 export type TrainingLog = {
   id: string;
   userId: string;
