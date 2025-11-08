@@ -57,7 +57,8 @@ export default function AdminCourts() {
   const { data: courts, isLoading } = useCollection<Court>(courtsQuery);
   
   const sortedCourts = useMemo(() => {
-    return courts?.slice().sort((a, b) => (b.verified ? 1 : 0) - (a.verified ? 1 : 0));
+    if (!courts) return [];
+    return courts.slice().sort((a, b) => (b.verified ? 1 : 0) - (a.verified ? 1 : 0));
   }, [courts]);
   
   return (
@@ -87,7 +88,7 @@ export default function AdminCourts() {
           <TableBody>
             {isLoading ? (
               [...Array(3)].map((_, i) => (
-                <TableRow key={i}>
+                <TableRow key={`court-skeleton-${i}`}>
                   <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
@@ -139,7 +140,6 @@ function CourtFormDialog({ trigger, court, onFormSubmit }: { trigger: React.Reac
       defaultValues: court || { name: "", city: "", address: "", statusTag: "", img: "", verified: false, flagCount: 0 },
     });
     
-    // Reset form when dialog opens
     useEffect(() => {
         if(isOpen) {
             form.reset(court || { name: "", city: "", address: "", statusTag: "", img: "", verified: false, flagCount: 0 });
@@ -159,7 +159,6 @@ function CourtFormDialog({ trigger, court, onFormSubmit }: { trigger: React.Reac
           toast({ title: "Court Added!", description: `${values.name} has been added.` });
           onFormSubmit('create', newDocRef.id);
         }
-        form.reset();
         setIsOpen(false);
       } catch (error) {
         console.error("Error saving court:", error);
@@ -261,4 +260,3 @@ function DeleteCourtDialog({ courtId, courtName, onDelete }: { courtId: string; 
     );
 }
 
-    

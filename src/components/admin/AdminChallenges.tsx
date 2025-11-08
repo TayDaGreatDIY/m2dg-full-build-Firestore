@@ -80,7 +80,7 @@ export default function AdminChallenges() {
           <TableBody>
             {isLoading ? (
               [...Array(3)].map((_, i) => (
-                <TableRow key={i}>
+                <TableRow key={`challenge-skeleton-${i}`}>
                   <TableCell><Skeleton className="h-5 w-40" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-6 w-24" /></TableCell>
