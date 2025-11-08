@@ -93,7 +93,7 @@ export type Court = {
   name: string;
   city: string;
   address: string;
-  statusTag: string;
+  status: string;
   img?: string;
   verified?: boolean;
   flagCount?: number;

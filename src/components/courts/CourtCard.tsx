@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from "next/image";
@@ -24,7 +25,7 @@ export default function CourtCard({ court }: CourtCardProps) {
         </div>
       </div>
       <div className="p-3 flex justify-between items-center">
-        <Badge variant="gold">{court.statusTag}</Badge>
+        <Badge variant="gold">{court.status}</Badge>
         <Link href={`/courts/${court.id}`}>
             <Button variant="outline" size="sm">Details</Button>
         </Link>
