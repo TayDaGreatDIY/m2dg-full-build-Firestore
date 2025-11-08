@@ -139,7 +139,7 @@ export default function AdminPlayers() {
               ))
             ) : players && players.length > 0 ? (
               players.map((player) => (
-                <TableRow key={player.uid || player.id}>
+                <TableRow key={player.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
                       <UserAvatar
@@ -251,9 +251,9 @@ function PlayerEditDialog({
   useEffect(() => {
     if (isOpen && player) {
       form.reset({
-        displayName: player.displayName,
-        username: player.username,
-        email: player.email,
+        displayName: player.displayName ?? "",
+        username: player.username ?? "",
+        email: player.email ?? "",
         role: player.role || "player",
         status: player.status || "active",
         xp: player.xp || 0,
@@ -267,7 +267,7 @@ function PlayerEditDialog({
     setIsSubmitting(true);
     console.log("Submitting player update:", values);
     try {
-      const playerRef = doc(firestore, "users", player.uid);
+      const playerRef = doc(firestore, "users", player.id);
       await updateDoc(playerRef, values);
 
       toast({
@@ -275,7 +275,7 @@ function PlayerEditDialog({
         description: `${values.displayName}'s profile has been updated.`,
       });
 
-      onFormSubmit("update", player.uid);
+      onFormSubmit("update", player.id);
       setIsOpen(false);
     } catch (error: any) {
       console.error("Error updating player:", error);
