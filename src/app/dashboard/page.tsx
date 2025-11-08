@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useUser, useDoc, useMemoFirebase, useCollection, useFirestore } from "@/firebase";
+import { useRouter } from "next/navigation";
 import { DesktopHeader } from "@/components/ui/TopNav";
 import UserAvatar from "@/components/ui/UserAvatar";
 import StatTile from "@/components/ui/StatTile";
@@ -13,6 +14,7 @@ import Link from "next/link";
 import { Progress } from "@/components/ui/progress";
 import { getPlayerRank, Rank } from "@/lib/xpSystem";
 import { formatDistanceToNow } from "date-fns";
+import { Loader2 } from "lucide-react";
 
 const ChallengeCard = ({ challenge }: { challenge: Challenge }) => (
   <Link href={`/challenges/${challenge.id}`} className="block">
@@ -56,11 +58,19 @@ const CheckInFeedCard = ({ checkIn }: { checkIn: CheckIn }) => {
 export default function DashboardPage() {
   const { user: authUser, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
     setHasMounted(true);
   }, []);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isUserLoading && !authUser) {
+      router.replace('/login');
+    }
+  }, [authUser, isUserLoading, router]);
 
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !authUser) return null;
@@ -93,6 +103,15 @@ export default function DashboardPage() {
 
   const loading = isUserLoading || isUserDocLoading || areChallengesLoading || areCompetitionsLoading || areCheckinsLoading;
 
+  if (isUserLoading || !authUser) {
+    // Show a global loading spinner while auth state is being determined or redirecting
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
   if (!hasMounted) {
     // Render a loading state or nothing on the server and initial client render
     return (
