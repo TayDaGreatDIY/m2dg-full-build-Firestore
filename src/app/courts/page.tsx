@@ -7,45 +7,35 @@ import CourtCard from "@/components/courts/CourtCard";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import type { Court } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { collection, writeBatch, getDocs, limit, query, doc } from "firebase/firestore";
+import { collection, writeBatch, getDocs, limit, query, doc, getDoc, setDoc } from "firebase/firestore";
 import { courtData } from "@/lib/courtData";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRouter } from "next/navigation";
 
-// This function is intended for development setup to ensure courts exist.
-// It checks if courts exist and seeds them only if the collection is empty.
-const seedInitialCourts = async (db: any) => {
-  if (!db) return;
-  const courtsCollectionRef = collection(db, "courts");
-  // Check if there are any documents already
-  const q = query(courtsCollectionRef, limit(1));
-  const snapshot = await getDocs(q);
-  
-  if (!snapshot.empty) {
-    console.log("Courts collection is not empty, seeding skipped.");
-    return;
-  }
-  
-  console.log("Seeding initial courts to Firestore...");
-  const batch = writeBatch(db);
-  
-  courtData.forEach(court => {
-      const courtRef = doc(db, "courts", court.id);
-      const courtWithAddress = {
-        ...court,
-        address: court.address || `${court.name}, ${court.city}`,
-        status: court.statusTag || 'Unknown', // Ensure status field exists
-      }
-      batch.set(courtRef, courtWithAddress, { merge: true });
-  });
+// This function now ensures the test court exists without altering other data.
+const ensureTestCourtExists = async (db: any) => {
+    if (!db) return;
+    const testCourtId = 'home-test-court';
+    const testCourtRef = doc(db, "courts", testCourtId);
+    const testCourtSnap = await getDoc(testCourtRef);
 
-  try {
-      await batch.commit();
-      console.log("Courts seeded successfully.");
-  } catch (error) {
-      console.error("Error seeding courts:", error);
-  }
+    if (testCourtSnap.exists()) {
+        console.log("Test court already exists.");
+        return;
+    }
+
+    console.log("Seeding home test court to Firestore...");
+    const testCourt = courtData.find(c => c.id === testCourtId);
+    if (testCourt) {
+        try {
+            await setDoc(testCourtRef, testCourt);
+            console.log("Home Test Court seeded successfully.");
+        } catch (error) {
+            console.error("Error seeding test court:", error);
+        }
+    }
 };
+
 
 export default function CourtsPage() {
   const firestore = useFirestore();
@@ -54,8 +44,7 @@ export default function CourtsPage() {
   // Run the seeding logic once when the component mounts if firestore is available
   useEffect(() => {
     if (firestore) {
-      // We are not awaiting this, it's a fire-and-forget for setup.
-      seedInitialCourts(firestore);
+      ensureTestCourtExists(firestore);
     }
   }, [firestore]);
 
