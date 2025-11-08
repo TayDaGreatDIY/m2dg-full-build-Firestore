@@ -38,7 +38,7 @@ export type User = {
   badges?: Badge[];
 };
 
-export type UserWithId = User & { id: string };
+export type UserWithId = User & { id: string; uid: string };
 
 export type TrainingLog = {
   id: string;
@@ -206,3 +206,5 @@ export type ChatMessage = {
   text: string;
   timestamp: string;
 };
+
+    
