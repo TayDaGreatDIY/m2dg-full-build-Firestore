@@ -167,7 +167,12 @@ function CompetitionFormDialog({ trigger, competition, onFormSubmit }: { trigger
     const onSubmit = async (values: z.infer<typeof competitionSchema>) => {
       setIsSubmitting(true);
       try {
-        const dataToSave = { ...values, status: values.approved ? 'Approved' : 'Pending' };
+        const selectedCourt = courts?.find(c => c.id === values.courtId);
+        const dataToSave = { 
+            ...values, 
+            status: values.approved ? 'Approved' : 'Pending',
+            city: selectedCourt?.city || 'Unknown',
+        };
 
         if (competition) {
           const compRef = doc(firestore, "competitions", competition.id);

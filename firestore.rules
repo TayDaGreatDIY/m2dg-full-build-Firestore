@@ -26,10 +26,9 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     
-    // User-specific subcollections (training, notifications)
+    // User-specific subcollections (training, notifications, match history)
     match /users/{userId}/{subcollection}/{docId} {
-       // A user can read and write to their own subcollections.
-       // Admins can read any user's subcollections.
+       // A user can write to their own subcollections. Admins can read any subcollection.
        allow write: if request.auth != null && request.auth.uid == userId;
        allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
     }

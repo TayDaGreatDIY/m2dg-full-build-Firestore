@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
@@ -8,8 +9,8 @@ import UserAvatar from '@/components/ui/UserAvatar';
 import StatTile from '@/components/ui/StatTile';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, PlayCircle, Loader2, Edit } from 'lucide-react';
-import type { User, TrainingLog } from '@/lib/types';
+import { MessageSquare, PlayCircle, Loader2, Edit, Award } from 'lucide-react';
+import type { User, TrainingLog, MatchHistory } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -20,12 +21,10 @@ export default function PlayerProfilePage() {
   const { user: currentUser } = useAuthUser();
   const firestore = useFirestore();
 
-  // ✅ Safe UID check — fixes “undefined” issue
   const uid = typeof params.uid === "string" && params.uid !== "undefined" ? params.uid : null;
 
   const [isCreatingChat, setIsCreatingChat] = useState(false);
 
-  // Prevent Firestore calls until UID is valid
   const playerDocRef = useMemoFirebase(() => {
     if (!firestore || !uid) return null;
     return doc(firestore, "users", uid);
@@ -43,17 +42,17 @@ export default function PlayerProfilePage() {
   }, [firestore, uid]);
 
   const { data: trainingLogs, isLoading: isTrainingLoading } = useCollection<TrainingLog>(trainingQuery);
+  
+  const matchHistoryQuery = useMemoFirebase(() => {
+    if (!firestore || !uid) return null;
+    return query(
+        collection(firestore, "users", uid, "match_history"),
+        orderBy("date", "desc"),
+        limit(10)
+    );
+  }, [firestore, uid]);
+  const { data: matchHistory, isLoading: isHistoryLoading } = useCollection<MatchHistory>(matchHistoryQuery);
 
-  const [formattedLogs, setFormattedLogs] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (trainingLogs) {
-      setFormattedLogs(trainingLogs.map(log => ({
-        ...log,
-        timeAgo: log.createdAt ? formatDistanceToNow(log.createdAt.toDate(), { addSuffix: true }) : ''
-      })));
-    }
-  }, [trainingLogs]);
 
   const handleSendMessage = async () => {
     if (!currentUser || !player || isCreatingChat || !firestore) return;
@@ -94,7 +93,7 @@ export default function PlayerProfilePage() {
     }
   };
 
-  const isLoading = isPlayerLoading || isTrainingLoading;
+  const isLoading = isPlayerLoading || isTrainingLoading || isHistoryLoading;
   const isOwnProfile = currentUser?.uid === uid;
 
   if (isLoading) {
@@ -175,15 +174,47 @@ export default function PlayerProfilePage() {
             <StatTile label="Home Court" value={player.homeCourt} />
           </div>
 
+          {player.badges && player.badges.length > 0 && (
+            <div className="bg-[var(--color-bg-card)] rounded-card border border-white/10 p-4 space-y-3">
+                <h3 className="font-bold font-headline text-lg">My Achievements</h3>
+                <div className="flex flex-wrap gap-2">
+                    {player.badges.map(badge => (
+                        <div key={badge.id} className="bg-gold/10 border border-gold/20 text-gold text-xs font-bold rounded-full px-3 py-1 flex items-center gap-1">
+                            <Award size={14} />
+                            {badge.name}
+                        </div>
+                    ))}
+                </div>
+            </div>
+          )}
+
+          <div className="bg-[var(--color-bg-card)] rounded-card border border-white/10 p-4 space-y-3">
+            <h3 className="font-bold font-headline text-lg">Match History</h3>
+            {matchHistory && matchHistory.length > 0 ? (
+                <ul className="space-y-3 text-sm text-white/70">
+                {matchHistory.map((match) => (
+                  <li key={match.id} className="flex justify-between items-center bg-background/50 p-2 rounded-md">
+                    <div>
+                      <p className={`font-bold ${match.result === 'W' ? 'text-green-400' : 'text-red-400'}`}>{match.result} vs {match.opponent}</p>
+                      <p className="text-xs text-white/50">{match.score} &bull; {match.date ? formatDistanceToNow(match.date.toDate(), { addSuffix: true }) : ''}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+                <p className="text-sm text-white/50">No matches logged yet.</p>
+            )}
+          </div>
+
           <div className="bg-[var(--color-bg-card)] rounded-card border border-white/10 p-4 space-y-3">
             <h3 className="font-bold font-headline text-lg">Recent Activity</h3>
-            {formattedLogs.length > 0 ? (
+            {trainingLogs && trainingLogs.length > 0 ? (
               <ul className="space-y-3 text-sm text-white/70">
-                {formattedLogs.map((log) => (
+                {trainingLogs.map((log) => (
                   <li key={log.id} className="flex justify-between items-center">
                     <div>
                       <span className="font-semibold">{log.workType}</span> @ {log.location}
-                      <p className="text-xs text-white/50">{log.timeAgo}</p>
+                      <p className="text-xs text-white/50">{log.createdAt ? formatDistanceToNow(log.createdAt.toDate(), { addSuffix: true }) : ''}</p>
                       {log.notes && <p className="text-white/90 text-sm mt-1 pl-2 border-l-2 border-orange/20">{log.notes}</p>}
                     </div>
                     {log.mediaURL && (

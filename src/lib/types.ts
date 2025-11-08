@@ -3,6 +3,21 @@ import { Timestamp } from "firebase/firestore";
 
 export type UserRole = 'player' | 'coach' | 'moderator' | 'admin';
 
+export type Badge = {
+  id: string;
+  name: string;
+  icon: string;
+  dateEarned: Timestamp;
+}
+
+export type MatchHistory = {
+  id: string;
+  date: Timestamp;
+  opponent: string;
+  result: 'W' | 'L';
+  score: string;
+}
+
 export type User = {
   uid: string;
   displayName: string;
@@ -19,6 +34,7 @@ export type User = {
   homeCourtId?: string;
   city?: string;
   createdAt?: Timestamp;
+  badges?: Badge[];
 };
 
 export type UserWithId = User & { id: string };
@@ -105,6 +121,7 @@ export type Competition = {
   prize: string;
   participants: string[];
   status?: 'Pending' | 'Approved' | 'Completed';
+  city?: string;
 }
 
 export type AdminLog = {
