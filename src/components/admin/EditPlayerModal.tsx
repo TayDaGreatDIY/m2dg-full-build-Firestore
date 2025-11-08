@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/firebase/firebase";
+import { useFirestore } from "@/firebase";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import type { UserWithId } from "@/lib/types";
 
 // ---------------- Schema ----------------
 
@@ -51,10 +52,10 @@ const playerSchema = z.object({
 // ---------------- Player Edit Dialog ----------------
 
 interface EditPlayerModalProps {
-  player: any;
+  player: UserWithId;
   isOpen: boolean;
   onClose: () => void;
-  onFormSubmit?: (action: string, id: string) => void;
+  onFormSubmit: (action: string, id: string) => void;
 }
 
 export default function EditPlayerModal({
@@ -65,27 +66,34 @@ export default function EditPlayerModal({
 }: EditPlayerModalProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const firestore = useFirestore();
 
   const form = useForm<z.infer<typeof playerSchema>>({
     resolver: zodResolver(playerSchema),
-    defaultValues: {
-      displayName: player?.displayName ?? "",
-      username: player?.username ?? "",
-      xp: player?.xp ?? 0,
-      trainingStreak: player?.trainingStreak ?? 0,
-      winStreak: player?.winStreak ?? 0,
-      role: player?.role ?? "player",
-      status: player?.status ?? "active",
-    },
   });
 
-  // ✅ Submit handler
+   useEffect(() => {
+    if (player && isOpen) {
+      form.reset({
+        displayName: player.displayName ?? "",
+        username: player.username ?? "",
+        xp: player.xp ?? 0,
+        trainingStreak: player.trainingStreak ?? 0,
+        winStreak: player.winStreak ?? 0,
+        role: player.role ?? "player",
+        status: player.status ?? "active",
+      });
+    }
+  }, [player, isOpen, form]);
+
   const onSubmit = async (values: z.infer<typeof playerSchema>) => {
     setIsSubmitting(true);
+    console.log("Submitting player update:", values);
+
     try {
       if (!player?.id) throw new Error("Player ID is missing.");
 
-      const playerRef = doc(db, "users", player.id);
+      const playerRef = doc(firestore, "users", player.id);
       await updateDoc(playerRef, {
         ...values,
         updatedAt: serverTimestamp(),
@@ -99,17 +107,22 @@ export default function EditPlayerModal({
       if (onFormSubmit) onFormSubmit("update", player.id);
       onClose();
     } catch (error: any) {
-      console.error("Error updating player:", error);
+        let description = "An error occurred while saving player data.";
+        if (error.code === 'permission-denied') {
+            description = "Your account does not have admin rights for this update.";
+        }
+       console.error("Error updating player:", error);
       toast({
         variant: "destructive",
         title: "Error Updating Player",
-        description:
-          error?.message || "An error occurred while saving player data.",
+        description: description,
       });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (!player) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
