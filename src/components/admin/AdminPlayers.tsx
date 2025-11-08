@@ -104,18 +104,7 @@ export default function AdminPlayers() {
     [firestore]
   );
   
-  const { data: playersRaw, isLoading } = useCollection<User>(usersQuery);
-  const [players, setPlayers] = useState<UserWithId[]>([]);
-  
-  useEffect(() => {
-    if (playersRaw) {
-      const playersWithId = playersRaw.map((p) => ({
-        ...p,
-        id: p.uid, // Using uid as the unique doc id
-      }));
-      setPlayers(playersWithId);
-    }
-  }, [playersRaw]);
+  const { data: players, isLoading } = useCollection<UserWithId>(usersQuery);
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -148,7 +137,7 @@ export default function AdminPlayers() {
                   <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
                 </TableRow>
               ))
-            ) : players.length > 0 ? (
+            ) : players && players.length > 0 ? (
               players.map((player) => (
                 <TableRow key={player.id}>
                   <TableCell className="font-medium">
@@ -378,3 +367,4 @@ function PlayerEditDialog({
     </Dialog>
   );
 }
+
