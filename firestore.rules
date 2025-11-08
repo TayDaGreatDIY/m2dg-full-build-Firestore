@@ -1,54 +1,82 @@
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Public read of courts, challenges, competitions
-    match /courts/{courtId} {
-      allow read: if true;
-      allow write: if request.auth.token.admin == true;
-    }
-    match /challenges/{challengeId} {
-      allow read: if true;
-      allow write: if request.auth.token.admin == true;
-    }
-    match /competitions/{competitionId} {
-        allow read: if true;
-        allow write: if request.auth.token.admin == true;
-    }
-    
-    // Runs and Check-ins are public to read
-    match /courts/{courtId}/{subcollection}/{docId} {
-        allow read: if true;
-        allow write: if request.auth != null; // Allow logged-in users to check-in or host runs
+
+    // Helper function to check if the requesting user is an admin.
+    // It reads the user's own document from the /users collection.
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Users can read/update their own profile, admins can do anything
+    // Rules for the Users collection
     match /users/{userId} {
-      allow read, update: if request.auth != null && (request.auth.uid == userId || request.auth.token.admin == true);
+      // Admins can read and write any user document.
+      // A user can read or update their OWN document.
+      allow read, update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      
+      // Any authenticated user can create their own user document upon sign-up.
       allow create: if request.auth != null;
-      allow delete: if request.auth.token.admin == true;
+
+      // Only admins can list all users (for the admin panel).
+      allow list: if isAdmin();
+      
+      // Only admins can delete user documents.
+      allow delete: if isAdmin();
     }
     
-    // Chats are private to members
+    // User-specific subcollections (training, notifications)
+    match /users/{userId}/{subcollection}/{docId} {
+       // A user can read and write to their own subcollections.
+       // Admins can read any user's subcollections.
+       allow write: if request.auth != null && request.auth.uid == userId;
+       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Rules for public data collections (Courts, Challenges, Competitions)
+    match /courts/{courtId} {
+      // Any authenticated user can read court data.
+      allow read: if request.auth != null;
+      // Only admins can create, update, or delete courts.
+      allow write: if isAdmin();
+    }
+    
+    match /challenges/{challengeId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+    
+    match /competitions/{competitionId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // Rules for court subcollections (runs, check-ins)
+    match /courts/{courtId}/{subcollection}/{docId} {
+        // Any authenticated user can read check-ins and runs.
+        allow read: if request.auth != null;
+        // Any authenticated user can create/update their own check-in or a run.
+        allow write: if request.auth != null;
+    }
+    
+    // Rules for Chat collections
     match /chats/{chatId} {
+      // A user can read or write to a chat only if they are a member.
       allow read, write: if request.auth != null && request.auth.uid in resource.data.memberIds;
     }
     match /chats/{chatId}/messages/{messageId} {
+      // A user can read or write messages in a chat they are a member of.
       allow read, write: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.memberIds;
     }
 
-    // User-specific subcollections (training, notifications) are private to the user, but readable by admins
-    match /users/{userId}/{collection}/{docId} {
-       allow read, write: if request.auth != null && request.auth.uid == userId;
-       allow read: if request.auth.token.admin == true;
-    }
-    
-    // Activity logs are write-only for admins
+    // Rules for Admin Activity Logs
     match /admin_logs/{logId} {
-        allow read, write: if request.auth.token.admin == true;
-        allow create: if request.auth.token.admin == true;
+      // All authenticated users can read the logs.
+      allow read: if request.auth != null;
+      // Only admins can create new log entries. Logs are immutable.
+      allow create: if isAdmin();
+      allow update, delete: if false; // Prevent logs from being changed or deleted.
     }
-
   }
 }
