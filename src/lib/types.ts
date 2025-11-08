@@ -156,6 +156,15 @@ export type Run = {
     createdAt: Timestamp;
 }
 
+export type Video = {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  thumbnailUrl: string;
+  imageHint: string;
+};
+
 // Demo data types, retained for reference
 export type FeedPost = {
   id: string;
