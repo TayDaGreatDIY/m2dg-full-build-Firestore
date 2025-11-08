@@ -15,7 +15,7 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -27,6 +27,7 @@ import { PlusCircle, Edit, Trash2, Loader2, CalendarIcon } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 const competitionSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -103,7 +104,7 @@ export default function AdminCompetitions() {
                   <TableCell>{comp.prize}</TableCell>
                   <TableCell>
                     <Badge variant={
-                      comp.status === 'Approved' ? 'secondary'
+                      comp.status === 'Approved' ? "secondary"
                       : comp.status === 'Completed' ? 'outline'
                       : 'destructive'
                     }>

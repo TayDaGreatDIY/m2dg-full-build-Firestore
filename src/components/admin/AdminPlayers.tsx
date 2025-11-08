@@ -3,32 +3,36 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc, updateDoc, addDoc, serverTimestamp } from "firebase/firestore";
-import type { User, UserRole } from "@/lib/types";
+import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query } from "firebase/firestore";
+import type { User } from "@/lib/types";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { useUser as useAuthUser } from "@/firebase";
+import { useUser } from "@/firebase";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Edit, Loader2, User as UserIcon } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Loader2, ShieldAlert } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import UserAvatar from "../ui/UserAvatar";
+import UserAvatar from "@/components/ui/UserAvatar";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 const playerSchema = z.object({
-  displayName: z.string().min(1, "Name is required"),
-  username: z.string().min(1, "Username is required"),
-  xp: z.coerce.number().min(0, "XP cannot be negative"),
-  winStreak: z.coerce.number().min(0, "Win streak cannot be negative"),
-  role: z.enum(["player", "coach", "moderator", "admin"]),
-  status: z.enum(["active", "suspended"]),
+  displayName: z.string().min(2, "Display name is required"),
+  username: z.string().min(2, "Username is required"),
+  email: z.string().email("Invalid email address"),
+  role: z.enum(['player', 'coach', 'moderator', 'admin']).default('player'),
+  status: z.enum(['active', 'suspended']).default('active'),
+  xp: z.coerce.number().min(0),
+  trainingStreak: z.coerce.number().min(0),
+  winStreak: z.coerce.number().min(0),
 });
 
 async function logAdminAction(firestore: any, user: any, action: string, targetType: string, targetId: string) {
@@ -48,18 +52,18 @@ async function logAdminAction(firestore: any, user: any, action: string, targetT
 
 export default function AdminPlayers() {
   const firestore = useFirestore();
-  const { user: adminUser } = useAuthUser();
-
-  const usersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
+  const { user: adminUser } = useUser();
+  const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
   const { data: players, isLoading } = useCollection<User>(usersQuery);
-  
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
             <h2 className="text-xl font-bold font-headline">Manage Players</h2>
-            <p className="text-white/60 text-sm">Edit user roles, stats, and status.</p>
+            <p className="text-white/60 text-sm">Edit player roles, status, and stats.</p>
         </div>
+        {/* Add Player functionality can be added here if needed */}
       </div>
 
       <div className="bg-card border border-white/10 rounded-lg">
@@ -67,7 +71,7 @@ export default function AdminPlayers() {
           <TableHeader>
             <TableRow>
               <TableHead>Player</TableHead>
-              <TableHead>XP</TableHead>
+              <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -76,12 +80,12 @@ export default function AdminPlayers() {
           <TableBody>
             {isLoading ? (
               [...Array(5)].map((_, i) => (
-                <TableRow key={`player-skeleton-${i}`}>
-                  <TableCell><div className="flex items-center gap-2"><Skeleton className="h-8 w-8 rounded-full" /><Skeleton className="h-5 w-32" /></div></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                  <TableCell className="text-right"><Skeleton className="h-8 w-10 ml-auto" /></TableCell>
+                <TableRow key={`players-skeleton-${i}`}>
+                  <TableCell><Skeleton className="h-10 w-48" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                  <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                 </TableRow>
               ))
             ) : players && players.length > 0 ? (
@@ -89,24 +93,31 @@ export default function AdminPlayers() {
                 <TableRow key={player.uid}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
-                        <UserAvatar src={player.avatarURL} name={player.displayName} size={32} />
-                        <div>
-                            <p className="font-bold">{player.displayName}</p>
-                            <p className="text-xs text-white/50">@{player.username}</p>
-                        </div>
+                      <UserAvatar src={player.avatarURL} name={player.displayName} size={32}/>
+                      <div>
+                        <p>{player.displayName}</p>
+                        <p className="text-xs text-white/50">@{player.username}</p>
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell>{player.xp}</TableCell>
-                  <TableCell><Badge variant="outline">{player.role || 'player'}</Badge></TableCell>
-                  <TableCell>
-                    <Badge variant={player.status === 'active' ? 'secondary' : 'destructive'}>{player.status || 'active'}</Badge>
+                  <TableCell>{player.email}</TableCell>
+                   <TableCell>
+                    <Badge variant={player.role === 'admin' ? "gold" : "secondary"}>
+                      {player.role || 'player'}
+                    </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <PlayerFormDialog
+                  <TableCell>
+                     <Badge variant={player.status === 'active' ? "secondary" : "destructive"}>
+                       {player.status || 'active'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right space-x-2">
+                    <PlayerEditDialog
                         player={player}
                         trigger={<Button variant="outline" size="icon"><Edit size={16} /></Button>}
-                        onFormSubmit={(action, playerId) => logAdminAction(firestore, adminUser, action, 'player', playerId)}
+                        onFormSubmit={(action, id) => logAdminAction(firestore, adminUser, action, 'player', id)}
                     />
+                    {/* Delete Player Dialog can be added here if needed */}
                   </TableCell>
                 </TableRow>
               ))
@@ -122,7 +133,8 @@ export default function AdminPlayers() {
   );
 }
 
-function PlayerFormDialog({ trigger, player, onFormSubmit }: { trigger: React.ReactNode, player: User, onFormSubmit: (action: string, playerId: string) => void }) {
+
+function PlayerEditDialog({ trigger, player, onFormSubmit }: { trigger: React.ReactNode, player: User, onFormSubmit: (action: string, id: string) => void }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
@@ -130,16 +142,11 @@ function PlayerFormDialog({ trigger, player, onFormSubmit }: { trigger: React.Re
     
     const form = useForm<z.infer<typeof playerSchema>>({
       resolver: zodResolver(playerSchema),
-      defaultValues: {
-          ...player,
-          role: player.role || 'player',
-          status: player.status || 'active'
-      },
     });
 
     useEffect(() => {
-        if(isOpen) {
-            form.reset({
+        if (isOpen && player) {
+             form.reset({
                 ...player,
                 role: player.role || 'player',
                 status: player.status || 'active',
@@ -153,11 +160,11 @@ function PlayerFormDialog({ trigger, player, onFormSubmit }: { trigger: React.Re
         const playerRef = doc(firestore, "users", player.uid);
         await updateDoc(playerRef, values);
         toast({ title: "Player Updated!", description: `${values.displayName}'s profile has been updated.` });
-        onFormSubmit('update_player', player.uid);
+        onFormSubmit('update', player.uid);
         setIsOpen(false);
       } catch (error) {
-        console.error("Error saving player:", error);
-        toast({ variant: "destructive", title: "Error", description: "Could not save player profile." });
+        console.error("Error updating player:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not update player profile." });
       } finally {
         setIsSubmitting(false);
       }
@@ -166,54 +173,51 @@ function PlayerFormDialog({ trigger, player, onFormSubmit }: { trigger: React.Re
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] bg-card border-white/10">
+            <DialogContent className="sm:max-w-md bg-card border-white/10">
                  <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <DialogHeader>
-                            <DialogTitle>Edit Player: @{player.username}</DialogTitle>
+                          <DialogTitle>Edit Player: {player.displayName}</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
-                            <FormField control={form.control} name="displayName" render={({ field }) => (
+                             <FormField control={form.control} name="displayName" render={({ field }) => (
                                 <FormItem><FormLabel>Display Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                             )}/>
                             <FormField control={form.control} name="username" render={({ field }) => (
                                 <FormItem><FormLabel>Username</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                             )}/>
-                            <div className="grid grid-cols-2 gap-4">
-                                <FormField control={form.control} name="xp" render={({ field }) => (
-                                    <FormItem><FormLabel>XP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-                                )}/>
-                                <FormField control={form.control} name="winStreak" render={({ field }) => (
-                                    <FormItem><FormLabel>Win Streak</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-                                )}/>
-                            </div>
                             <FormField control={form.control} name="role" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Role</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="player">Player</SelectItem>
-                                            <SelectItem value="coach">Coach</SelectItem>
-                                            <SelectItem value="moderator">Moderator</SelectItem>
-                                            <SelectItem value="admin">Admin</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
+                                <FormItem><FormLabel>Role</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="player">Player</SelectItem>
+                                        <SelectItem value="coach">Coach</SelectItem>
+                                        <SelectItem value="moderator">Moderator</SelectItem>
+                                        <SelectItem value="admin">Admin</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage /></FormItem>
                             )}/>
-                             <FormField control={form.control} name="status" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Status</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="active">Active</SelectItem>
-                                            <SelectItem value="suspended">Suspended</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
+                            <FormField control={form.control} name="status" render={({ field }) => (
+                                <FormItem><FormLabel>Status</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="active">Active</SelectItem>
+                                        <SelectItem value="suspended">Suspended</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage /></FormItem>
+                            )}/>
+                             <FormField control={form.control} name="xp" render={({ field }) => (
+                                <FormItem><FormLabel>XP</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                            )}/>
+                             <FormField control={form.control} name="trainingStreak" render={({ field }) => (
+                                <FormItem><FormLabel>Training Streak</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                            )}/>
+                             <FormField control={form.control} name="winStreak" render={({ field }) => (
+                                <FormItem><FormLabel>Win Streak</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
                             )}/>
                         </div>
                         <DialogFooter>
@@ -228,3 +232,4 @@ function PlayerFormDialog({ trigger, player, onFormSubmit }: { trigger: React.Re
         </Dialog>
     );
 }
+

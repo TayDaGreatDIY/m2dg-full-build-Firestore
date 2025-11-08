@@ -21,6 +21,7 @@ import { PlusCircle, Edit, Trash2, Loader2, CheckCircle, ShieldAlert } from "luc
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 const courtSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -175,7 +176,7 @@ function CourtFormDialog({ trigger, court, onFormSubmit }: { trigger: React.Reac
                  <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <DialogHeader>
-                            <DialogTitle>{court ? 'Edit Court' : 'Add New Court'}</DialogTitle>
+                          <DialogTitle>{court ? 'Edit Court' : 'Add New Court'}</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
                             <FormField control={form.control} name="name" render={({ field }) => (
@@ -259,4 +260,3 @@ function DeleteCourtDialog({ courtId, courtName, onDelete }: { courtId: string; 
         </AlertDialog>
     );
 }
-
