@@ -6,7 +6,9 @@ service cloud.firestore {
 
     // Helper function to check if a user is an admin
     function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // Check for a custom claim OR a role in a 'users' document.
+      // Prioritize custom claims if they exist, as they are more secure.
+      return request.auth.token.admin == true || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     // Helper function to check if a user is a moderator or admin
@@ -14,33 +16,28 @@ service cloud.firestore {
       let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
       return userRole == 'admin' || userRole == 'moderator';
     }
-
-    // Helper function to check if user is the owner of the document
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
     
     // USERS
-    // Anyone can read a user profile.
-    // Users can create and update their own profile, but cannot change their own role or status.
-    // Admins can write to any field on any user profile.
+    // Users can read their own profile.
+    // Users can update their own profile, but not their role or status.
+    // Admins can read and write to any field on any user profile.
     match /users/{userId} {
-      allow read: if true;
-      allow create: if isOwner(userId);
-      allow update: if (isOwner(userId) && !('role' in request.resource.data) && !('status' in request.resource.data)) || isAdmin();
+      allow read: if request.auth.uid == userId || isAdmin();
+      allow create: if request.auth != null;
+      allow update: if (request.auth.uid == userId && !('role' in request.resource.data) && !('status' in request.resource.data)) || isAdmin();
       allow delete: if isAdmin();
     }
     
     // TRAINING SESSIONS
     // Users can create, read, update, delete their own training sessions.
     match /users/{userId}/training_sessions/{sessionId} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if request.auth.uid == userId;
     }
     
     // NOTIFICATIONS
     // Users can read and write (e.g., mark as read) their own notifications.
     match /users/{userId}/notifications/{notificationId} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if request.auth.uid == userId;
     }
 
     // COURTS

@@ -54,7 +54,7 @@ export default function PlayerProfilePage() {
   }, [trainingLogs]);
 
   const handleSendMessage = async () => {
-    if (!currentUser || !player || isCreatingChat) return;
+    if (!currentUser || !player || isCreatingChat || !firestore) return;
 
     setIsCreatingChat(true);
 
@@ -158,7 +158,7 @@ export default function PlayerProfilePage() {
                         Edit Profile
                     </Button>
                 ) : (
-                    <Button onClick={handleSendMessage} disabled={isCreatingChat} className="w-full">
+                    <Button onClick={handleSendMessage} disabled={isCreatingChat || !currentUser} className="w-full">
                         {isCreatingChat ? <Loader2 className="animate-spin" /> : <MessageSquare size={16} />}
                         Message {player.displayName}
                     </Button>
@@ -202,5 +202,3 @@ export default function PlayerProfilePage() {
     </div>
   );
 }
-
-    
