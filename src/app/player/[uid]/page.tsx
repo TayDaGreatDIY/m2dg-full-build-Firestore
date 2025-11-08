@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
@@ -20,27 +19,29 @@ export default function PlayerProfilePage() {
   const router = useRouter();
   const { user: currentUser } = useAuthUser();
   const firestore = useFirestore();
-  const uid = params.uid as string;
+
+  // ✅ Safe UID check — fixes “undefined” issue
+  const uid = typeof params.uid === "string" && params.uid !== "undefined" ? params.uid : null;
 
   const [isCreatingChat, setIsCreatingChat] = useState(false);
 
-  // Fetch player data
+  // Prevent Firestore calls until UID is valid
   const playerDocRef = useMemoFirebase(() => {
     if (!firestore || !uid) return null;
-    return doc(firestore, 'users', uid);
+    return doc(firestore, "users", uid);
   }, [firestore, uid]);
+
   const { data: player, isLoading: isPlayerLoading } = useDoc<User>(playerDocRef);
 
-  // Fetch player's training logs
   const trainingQuery = useMemoFirebase(() => {
-    // CRITICAL FIX: Ensure 'uid' is available before creating the query
-    if (!firestore || !uid) return null; 
+    if (!firestore || !uid) return null;
     return query(
       collection(firestore, "users", uid, "training_sessions"),
       orderBy("createdAt", "desc"),
       limit(10)
     );
-  }, [firestore, uid]); // Dependency on 'uid' is key
+  }, [firestore, uid]);
+
   const { data: trainingLogs, isLoading: isTrainingLoading } = useCollection<TrainingLog>(trainingQuery);
 
   const [formattedLogs, setFormattedLogs] = useState<any[]>([]);

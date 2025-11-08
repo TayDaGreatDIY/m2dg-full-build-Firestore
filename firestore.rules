@@ -1,113 +1,40 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if a user is an admin
-    function isAdmin() {
-      // Check for a custom claim OR a role in a 'users' document.
-      // Prioritize custom claims if they exist, as they are more secure.
-      return request.auth.token.admin == true || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-
-    // Helper function to check if a user is a moderator or admin
-    function isModeratorOrAdmin() {
-      let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-      return userRole == 'admin' || userRole == 'moderator';
-    }
     
-    // USERS
-    // Users can read their own profile.
-    // Users can update their own profile, but not their role or status.
-    // Admins can read and write to any field on any user profile.
-    match /users/{userId} {
-      allow read: if request.auth.uid == userId || isAdmin();
-      allow create: if request.auth != null;
-      allow update: if (request.auth.uid == userId && !('role' in request.resource.data) && !('status' in request.resource.data)) || isAdmin();
-      allow delete: if isAdmin();
-    }
-    
-    // TRAINING SESSIONS
-    // Users can create, read, update, delete their own training sessions.
-    match /users/{userId}/training_sessions/{sessionId} {
-      allow read, write: if request.auth.uid == userId;
-    }
-    
-    // NOTIFICATIONS
-    // Users can read and write (e.g., mark as read) their own notifications.
-    match /users/{userId}/notifications/{notificationId} {
-      allow read, write: if request.auth.uid == userId;
-    }
-
-    // COURTS
-    // Anyone can read court data.
-    // Moderators and Admins can create, update, or delete courts.
+    // Public read of court data
     match /courts/{courtId} {
       allow read: if true;
-      allow write: if isModeratorOrAdmin();
     }
 
-    // CHECK-INS & RUNS (Subcollections of Courts)
-    // Any authenticated user can create/delete their own check-in or run.
-    match /courts/{courtId}/checkins/{checkinId} {
-        allow read: if true;
-        allow create, delete: if request.auth != null && request.auth.uid == checkinId;
+    // Users can read/update their own profile
+    match /users/{userId} {
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+    }
+
+    // Challenges are public to read
+    match /challenges/{challengeId} {
+      allow read: if true;
     }
     
-    match /courts/{courtId}/runs/{runId} {
-        allow read: if true;
-        allow create: if request.auth != null && request.resource.data.hostUid == request.auth.uid;
-        allow delete: if request.auth != null && (get(/databases/$(database)/documents/courts/$(courtId)/runs/$(runId)).data.hostUid == request.auth.uid || isAdmin());
-    }
-
-    // CHATS & MESSAGES
-    // Users can read/write chats they are a member of.
+    // Chats are private to members
     match /chats/{chatId} {
       allow read, write: if request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.memberIds;
     }
     match /chats/{chatId}/messages/{messageId} {
       allow read, write: if request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.memberIds;
     }
-    
-    // FEED (Placeholder - to be defined)
-    match /feed_posts/{postId} {
-        allow read: if true;
-        allow write: if request.auth != null; 
+
+    // User-specific subcollections are private to the user
+    match /users/{userId}/{collection}/{docId} {
+       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // --- ADMIN-ONLY COLLECTIONS ---
-
-    // CHALLENGES
-    // Anyone can read challenges.
-    // Moderators and Admins can write to challenges.
-    match /challenges/{challengeId} {
-      allow read: if true;
-      allow write: if isModeratorOrAdmin();
+    // Admin override for all data
+    // This is a broad rule. For production, you might want more granular admin rules.
+    match /{document=**} {
+      allow read, write: if request.auth.token.admin == true;
     }
-    
-    // COMPETITIONS
-    // Anyone can read competitions.
-    // Admins can write to competitions.
-    match /competitions/{competitionId} {
-        allow read: if true;
-        allow write: if isAdmin();
-    }
-
-    // ADMIN LOGS
-    // Only admins can read logs.
-    // No one can write logs directly (they are created via backend functions).
-    match /admin_logs/{logId} {
-        allow read: if isAdmin();
-        allow write: if false;
-    }
-    
-    // ADMIN NOTIFICATIONS
-    // Only admins and moderators can read notifications.
-    match /admin_notifications/{notificationId} {
-        allow read: if isModeratorOrAdmin();
-        allow write: if isModeratorOrAdmin(); // To mark as read
-    }
-
   }
 }
