@@ -7,7 +7,7 @@ import CourtCard from "@/components/courts/CourtCard";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import type { Court } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { collection, writeBatch, getDocs, limit, query } from "firebase/firestore";
+import { collection, writeBatch, getDocs, limit, query, doc } from "firebase/firestore";
 import { courtData } from "@/lib/courtData";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRouter } from "next/navigation";
@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 // This function is intended for development setup to ensure courts exist.
 // It checks if courts exist and seeds them only if the collection is empty.
 const seedInitialCourts = async (db: any) => {
+  if (!db) return;
   const courtsCollectionRef = collection(db, "courts");
   // Check if there are any documents already
   const q = query(courtsCollectionRef, limit(1));
@@ -32,7 +33,8 @@ const seedInitialCourts = async (db: any) => {
       const courtRef = doc(db, "courts", court.id);
       const courtWithAddress = {
         ...court,
-        address: court.address || `${court.name}, ${court.city}`
+        address: court.address || `${court.name}, ${court.city}`,
+        status: court.statusTag || 'Unknown', // Ensure status field exists
       }
       batch.set(courtRef, courtWithAddress, { merge: true });
   });

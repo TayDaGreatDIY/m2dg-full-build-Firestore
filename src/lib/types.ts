@@ -99,6 +99,8 @@ export type Court = {
   img?: string;
   verified?: boolean;
   flagCount?: number;
+  latitude?: number;
+  longitude?: number;
 };
 
 export type Challenge = {

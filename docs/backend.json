@@ -127,6 +127,14 @@
           "type": "string",
           "description": "URL of the court's image.",
           "format": "uri"
+        },
+        "latitude": {
+            "type": "number",
+            "description": "The latitude of the court."
+        },
+        "longitude": {
+            "type": "number",
+            "description": "The longitude of the court."
         }
       },
       "required": [
