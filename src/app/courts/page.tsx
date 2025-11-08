@@ -4,13 +4,13 @@
 import { useEffect, useState, useMemo } from "react";
 import { DesktopHeader } from "@/components/ui/TopNav";
 import CourtCard from "@/components/courts/CourtCard";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import type { Court } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { collection, writeBatch, getDocs, limit, query, doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, setDoc } from "firebase/firestore";
 import { courtData } from "@/lib/courtData";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 // This function now ensures the test court exists without altering other data.
 const ensureTestCourtExists = async (db: any) => {
@@ -39,6 +39,7 @@ const ensureTestCourtExists = async (db: any) => {
 
 export default function CourtsPage() {
   const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
   const [selectedCity, setSelectedCity] = useState("All Cities");
 
   // Run the seeding logic once when the component mounts if firestore is available
@@ -49,11 +50,11 @@ export default function CourtsPage() {
   }, [firestore]);
 
   const courtsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null; // Wait for user to be authenticated
     return collection(firestore, 'courts');
-  }, [firestore]);
+  }, [firestore, user]);
 
-  const { data: courts, isLoading, error } = useCollection<Court>(courtsQuery);
+  const { data: courts, isLoading: areCourtsLoading, error } = useCollection<Court>(courtsQuery);
   
   const cities = useMemo(() => {
     if (!courts) return ["All Cities"];
@@ -72,6 +73,8 @@ export default function CourtsPage() {
     console.error("Firestore error fetching courts:", error);
   }
 
+  const isLoading = isUserLoading || areCourtsLoading;
+
   return (
     <div className="flex flex-col min-h-screen">
       <DesktopHeader pageTitle="Courts" />
@@ -83,7 +86,7 @@ export default function CourtsPage() {
           </div>
           
           <div className="flex gap-2">
-            <Select onValueChange={setSelectedCity} value={selectedCity}>
+            <Select onValueChange={setSelectedCity} value={selectedCity} disabled={isLoading}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Filter by City" />
               </SelectTrigger>
@@ -97,11 +100,9 @@ export default function CourtsPage() {
 
           <div className="space-y-4">
             {isLoading ? (
-              <>
-                <Skeleton className="h-48 w-full" />
-                <Skeleton className="h-48 w-full" />
-                <Skeleton className="h-48 w-full" />
-              </>
+              <div className="flex items-center justify-center pt-10">
+                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
             ) : error ? (
                <div className="text-center py-10 text-destructive">
                 <p>Could not load courts.</p>
