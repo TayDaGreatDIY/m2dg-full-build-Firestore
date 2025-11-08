@@ -27,7 +27,7 @@ export default function ChallengesPage() {
                                 <p className="text-sm text-white/60">{challenge.description}</p>
                             </div>
                         </div>
-                         <Badge variant={challenge.badgeVariant as any}>{challenge.badge}</Badge>
+                         <Badge variant={challenge.badgeVariant}>{challenge.badge}</Badge>
                     </div>
                     <Link href={`/challenges/${challenge.id}`} className="w-full block">
                         <Button variant="primary" className="w-full">Attempt Challenge</Button>

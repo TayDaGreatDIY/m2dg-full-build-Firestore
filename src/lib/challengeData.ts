@@ -6,7 +6,7 @@ export type Challenge = {
     title: string;
     description: string;
     badge: string;
-    badgeVariant: string;
+    badgeVariant: 'gold' | 'secondary' | 'orange';
     icon: LucideIcon;
 };
 

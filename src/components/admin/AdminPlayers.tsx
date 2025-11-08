@@ -66,10 +66,8 @@ const playerSchema = z.object({
   displayName: z.string().min(2, "Display name is required"),
   username: z.string().min(2, "Username is required"),
   email: z.string().email("Invalid email address"),
-  role: z
-    .enum(["player", "coach", "moderator", "admin"])
-    .default("player"),
-  status: z.enum(["active", "suspended"]).default("active"),
+  role: z.enum(["player", "coach", "moderator", "admin"]),
+  status: z.enum(["active", "suspended"]),
   xp: z.coerce.number().min(0),
   trainingStreak: z.coerce.number().min(0),
   winStreak: z.coerce.number().min(0),
@@ -142,7 +140,7 @@ export default function AdminPlayers() {
               ))
             ) : players && players.length > 0 ? (
               players.map((player) => (
-                <TableRow key={player.id}>
+                <TableRow key={player.uid}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
                       <UserAvatar
@@ -233,14 +231,26 @@ function PlayerEditDialog({
 
   const form = useForm<z.infer<typeof playerSchema>>({
     resolver: zodResolver(playerSchema),
+    defaultValues: {
+      role: 'player',
+      status: 'active',
+      xp: 0,
+      trainingStreak: 0,
+      winStreak: 0,
+    }
   });
 
   useEffect(() => {
     if (isOpen && player) {
       form.reset({
-        ...player,
+        displayName: player.displayName,
+        username: player.username,
+        email: player.email,
         role: player.role || "player",
         status: player.status || "active",
+        xp: player.xp || 0,
+        trainingStreak: player.trainingStreak || 0,
+        winStreak: player.winStreak || 0,
       });
     }
   }, [isOpen, player, form]);
@@ -248,13 +258,13 @@ function PlayerEditDialog({
   const onSubmit = async (values: z.infer<typeof playerSchema>) => {
     setIsSubmitting(true);
     try {
-      const playerRef = doc(firestore, "users", player.id);
+      const playerRef = doc(firestore, "users", player.uid);
       await updateDoc(playerRef, values);
       toast({
         title: "Player Updated!",
         description: `${values.displayName}'s profile has been updated.`,
       });
-      onFormSubmit("update", player.id);
+      onFormSubmit("update", player.uid);
       setIsOpen(false);
     } catch (error) {
       console.error("Error updating player:", error);

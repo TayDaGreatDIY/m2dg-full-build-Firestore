@@ -10,6 +10,7 @@ import { doc } from "firebase/firestore";
 import { useFirestore } from "@/firebase";
 import type { User as AppUser } from "@/lib/types";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import Link from 'next/link';
 
 type TopNavProps = {
   pageTitle: string;
@@ -30,15 +31,17 @@ export default function TopNav({ pageTitle }: TopNavProps) {
 
   return (
     <header className="flex items-center justify-between py-4 md:hidden">
-       <div className="flex items-center gap-2">
+       <Link href="/dashboard" className="flex items-center gap-2">
         <div className="text-gold font-extrabold text-xl font-headline">🏀 M2DG</div>
-      </div>
+      </Link>
       <div className="absolute left-1/2 -translate-x-1/2">
         <h1 className="text-lg font-bold tracking-tight text-white/90 font-headline">{pageTitle}</h1>
       </div>
       <div className="flex items-center gap-2">
         {user && !isUserLoading && (
-          <UserAvatar src={user.avatarURL} name={user.displayName} size={32} />
+          <Link href={`/player/${user.uid}`}>
+            <UserAvatar src={user.avatarURL} name={user.displayName} size={32} />
+          </Link>
         )}
       </div>
     </header>
