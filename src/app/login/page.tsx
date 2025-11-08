@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,28 +33,37 @@ export default function LoginPage() {
     }
 
     try {
-      let userCredential;
       if (action === 'signup') {
-        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
-        const username = email.split('@')[0];
-        
-        await setDoc(doc(db, 'users', user.uid), {
-          uid: user.uid,
-          displayName: username,
-          username: username,
-          avatarURL: `https://i.pravatar.cc/150?u=${user.uid}`,
-          xp: 0,
-          winStreak: 0,
-          trainingStreak: 0,
-          homeCourt: 'Not Set',
-          homeCourtId: '',
-          city: "Unknown"
-        });
+        const username = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
 
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (!userDoc.exists()) {
+             await setDoc(userDocRef, {
+                uid: user.uid,
+                email: user.email,
+                displayName: username,
+                username: username,
+                avatarURL: `https://i.pravatar.cc/150?u=${user.uid}`,
+                role: email === 'tayadmin@m2dg.com' ? 'admin' : 'player',
+                status: 'active',
+                xp: 0,
+                winStreak: 0,
+                trainingStreak: 0,
+                homeCourt: 'Not Set',
+                homeCourtId: '',
+                city: "Unknown",
+                createdAt: serverTimestamp(),
+            });
+        }
+        
         toast({ title: 'Account created!', description: 'Welcome to M2DG.' });
+
       } else {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(auth, email, password);
         toast({ title: 'Logged in!', description: "Welcome back." });
       }
       router.push('/dashboard');

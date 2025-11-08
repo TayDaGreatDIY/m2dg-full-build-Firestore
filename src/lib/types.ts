@@ -1,19 +1,24 @@
 
 import { Timestamp } from "firebase/firestore";
 
+export type UserRole = 'player' | 'coach' | 'moderator' | 'admin';
+
 export type User = {
   uid: string;
   displayName: string;
   username: string;
-  avatarURL: string; // Changed from photoURL
+  email?: string;
+  avatarURL: string; 
   aboutMe?: string;
-  role?: 'admin'; // Add role for admin access
+  role?: UserRole;
+  status?: 'active' | 'suspended';
   xp: number;
   winStreak: number;
   trainingStreak: number;
   homeCourt: string;
   homeCourtId?: string;
   city?: string;
+  createdAt?: Timestamp;
 };
 
 export type TrainingLog = {
@@ -32,7 +37,6 @@ export type Chat = {
   memberIds: string[];
   lastMessage: string;
   lastTimestamp: Timestamp;
-  // This will be enriched client-side
   otherUser?: {
     username: string;
     avatarURL: string;
@@ -48,13 +52,22 @@ export type Message = {
 
 export type Notification = {
     id: string;
-    userId: string; // User who receives the notification
+    userId: string; 
     fromId: string;
     fromName: string;
     type: 'new_message';
-    link: string; // e.g., /messages/chatId
+    link: string; 
     read: boolean;
     createdAt: Timestamp;
+}
+
+export type AdminNotification = {
+    id: string;
+    type: 'court_submission' | 'challenge_submission' | 'report';
+    message: string;
+    createdAt: Timestamp;
+    read: boolean;
+    link?: string;
 }
 
 export type Court = {
@@ -63,8 +76,44 @@ export type Court = {
   city: string;
   address: string;
   statusTag: string;
-  img?: string; // Image is optional now
+  img?: string;
+  verified?: boolean;
+  flagCount?: number;
 };
+
+export type Challenge = {
+  id: string;
+  title: string;
+  description: string;
+  rewardXP: number;
+  approved: boolean;
+  featured: boolean;
+  createdBy: string; 
+  createdAt?: Timestamp;
+};
+
+export type Competition = {
+  id: string;
+  title: string;
+  date: Timestamp;
+  description: string;
+  courtId: string;
+  organizerId: string;
+  approved: boolean;
+  prize: string;
+  participants: string[];
+  status?: 'Pending' | 'Approved' | 'Completed';
+}
+
+export type AdminLog = {
+    id: string;
+    action: string;
+    targetType: string;
+    targetId: string;
+    performedBy: string;
+    timestamp: Timestamp;
+}
+
 
 export type CheckIn = {
     id: string;
@@ -86,28 +135,11 @@ export type Run = {
     createdAt: Timestamp;
 }
 
-export type Challenge = {
-  id: string;
-  title: string;
-  desc: string;
-  status: 'ACTIVE' | 'COMPLETED' | 'NEW';
-};
-
-export type Video = {
-  id: string;
-  title: string;
-  description: string;
-  url: string;
-  thumbnailUrl: string;
-  imageHint: string;
-};
-
-
-// These types were for demo data, keeping them for reference if needed but adapting to Firestore
+// Demo data types, retained for reference
 export type FeedPost = {
   id: string;
   user: string;
-  userId: string; // Added to link to player profile
+  userId: string; 
   avatar: string;
   text: string;
   court: string;

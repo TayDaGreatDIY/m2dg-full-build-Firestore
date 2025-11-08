@@ -4,49 +4,55 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user has a specific role
-    function hasRole(role) {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    // Helper function to check if a user is an admin
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Default deny all reads and writes
-    match /{document=**} {
-      allow read, write: if false;
+    // Helper function to check if a user is a moderator or admin
+    function isModeratorOrAdmin() {
+      let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return userRole == 'admin' || userRole == 'moderator';
     }
 
+    // Helper function to check if user is the owner of the document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
     // USERS
-    // Allow users to read their own profile
-    // Allow users to update their own profile (but not change their role)
-    // Allow admins to read/write any user profile
+    // Anyone can read a user profile.
+    // Users can create and update their own profile, but cannot change their own role or status.
+    // Admins can write to any field on any user profile.
     match /users/{userId} {
-      allow read: if request.auth.uid == userId || hasRole('admin');
-      allow create: if request.auth.uid == userId;
-      allow update: if (request.auth.uid == userId && !('role' in request.resource.data)) || hasRole('admin');
-      allow delete: if hasRole('admin');
+      allow read: if true;
+      allow create: if isOwner(userId);
+      allow update: if (isOwner(userId) && !('role' in request.resource.data) && !('status' in request.resource.data)) || isAdmin();
+      allow delete: if isAdmin();
     }
     
     // TRAINING SESSIONS
-    // Allow users to create, read, update, delete their own training sessions
+    // Users can create, read, update, delete their own training sessions.
     match /users/{userId}/training_sessions/{sessionId} {
-      allow read, write: if request.auth.uid == userId;
+      allow read, write: if isOwner(userId);
     }
     
     // NOTIFICATIONS
-    // Allow users to read and write (mark as read) their own notifications
+    // Users can read and write (e.g., mark as read) their own notifications.
     match /users/{userId}/notifications/{notificationId} {
-        allow read, write: if request.auth.uid == userId;
+      allow read, write: if isOwner(userId);
     }
 
     // COURTS
-    // Allow anyone to read court data
-    // Allow only admins to create, update, or delete courts
+    // Anyone can read court data.
+    // Moderators and Admins can create, update, or delete courts.
     match /courts/{courtId} {
       allow read: if true;
-      allow write: if hasRole('admin');
+      allow write: if isModeratorOrAdmin();
     }
 
     // CHECK-INS & RUNS (Subcollections of Courts)
-    // Allow any authenticated user to create/delete their own check-in or run
+    // Any authenticated user can create/delete their own check-in or run.
     match /courts/{courtId}/checkins/{checkinId} {
         allow read: if true;
         allow create, delete: if request.auth != null && request.auth.uid == checkinId;
@@ -55,12 +61,11 @@ service cloud.firestore {
     match /courts/{courtId}/runs/{runId} {
         allow read: if true;
         allow create: if request.auth != null && request.resource.data.hostUid == request.auth.uid;
-        allow delete: if request.auth != null && get(/databases/$(database)/documents/courts/$(courtId)/runs/$(runId)).data.hostUid == request.auth.uid || hasRole('admin');
+        allow delete: if request.auth != null && (get(/databases/$(database)/documents/courts/$(courtId)/runs/$(runId)).data.hostUid == request.auth.uid || isAdmin());
     }
 
-
     // CHATS & MESSAGES
-    // Allow users to read/write chats they are a member of
+    // Users can read/write chats they are a member of.
     match /chats/{chatId} {
       allow read, write: if request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.memberIds;
     }
@@ -71,7 +76,41 @@ service cloud.firestore {
     // FEED (Placeholder - to be defined)
     match /feed_posts/{postId} {
         allow read: if true;
-        allow write: if request.auth != null; // Simplistic rule for now
+        allow write: if request.auth != null; 
     }
+
+    // --- ADMIN-ONLY COLLECTIONS ---
+
+    // CHALLENGES
+    // Anyone can read challenges.
+    // Moderators and Admins can write to challenges.
+    match /challenges/{challengeId} {
+      allow read: if true;
+      allow write: if isModeratorOrAdmin();
+    }
+    
+    // COMPETITIONS
+    // Anyone can read competitions.
+    // Admins can write to competitions.
+    match /competitions/{competitionId} {
+        allow read: if true;
+        allow write: if isAdmin();
+    }
+
+    // ADMIN LOGS
+    // Only admins can read logs.
+    // No one can write logs directly (they are created via backend functions).
+    match /admin_logs/{logId} {
+        allow read: if isAdmin();
+        allow write: if false;
+    }
+    
+    // ADMIN NOTIFICATIONS
+    // Only admins and moderators can read notifications.
+    match /admin_notifications/{notificationId} {
+        allow read: if isModeratorOrAdmin();
+        allow write: if isModeratorOrAdmin(); // To mark as read
+    }
+
   }
 }
