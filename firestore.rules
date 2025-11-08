@@ -3,6 +3,14 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Global default rules for diagnostics.
+    // Allows any authenticated user to read any document.
+    // Denies all writes by default, requiring explicit allow rules below.
+    match /{document=**} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
     // Helper function to check if the requesting user is an admin.
     function isAdmin() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
