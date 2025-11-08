@@ -5,43 +5,27 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // Helper function to check if the requesting user is an admin.
-    // It reads the user's own document from the /users collection.
     function isAdmin() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     // Rules for the Users collection
     match /users/{userId} {
-      // A user can read their OWN document. Admins can read any user document.
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      
-      // Allow users to update specific, safe fields on their own document
-      allow update: if request.auth != null && request.auth.uid == userId &&
-                      request.resource.data.diff(resource.data).affectedKeys()
-                      .hasOnly(['displayName', 'username', 'aboutMe', 'homeCourtId', 'homeCourt', 'city', 'avatarURL', 'xp', 'trainingStreak', 'lastCheckIn']);
-
-      // Any authenticated user can create their own user document upon sign-up.
+      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
       allow create: if request.auth != null;
-
-      // Only admins can list all users (for the admin panel).
       allow list: if isAdmin();
-      
-      // Only admins can delete user documents.
       allow delete: if isAdmin();
+
+      // User-specific subcollections (training, notifications, match history)
+      match /{subcollection}/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
     
-    // User-specific subcollections (training, notifications, match history)
-    match /users/{userId}/{subcollection}/{docId} {
-       // A user can write to their own subcollections. Admins can read any subcollection.
-       allow write: if request.auth != null && request.auth.uid == userId;
-       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
-    }
-
     // Rules for public data collections (Courts, Challenges, Competitions)
     match /courts/{courtId} {
-      // Any authenticated user can read court data.
       allow read: if request.auth != null;
-      // Only admins can create, update, or delete courts.
       allow write: if isAdmin();
     }
     
@@ -57,36 +41,27 @@ service cloud.firestore {
 
     // Rules for court subcollections (runs, check-ins)
     match /courts/{courtId}/checkins/{checkinId} {
-        // Any authenticated user can read check-ins.
         allow read: if request.auth != null;
-        // Any authenticated user can create/delete their own check-in.
         allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-        allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+        allow delete: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
     }
      match /courts/{courtId}/runs/{runId} {
-        // Any authenticated user can read runs.
         allow read: if request.auth != null;
-        // Any authenticated user can create their own run.
         allow create: if request.auth != null && request.resource.data.hostUid == request.auth.uid;
-        // Only the host or an admin can delete a run.
         allow delete: if request.auth != null && (resource.data.hostUid == request.auth.uid || isAdmin());
     }
     
     // Rules for Chat collections
     match /chats/{chatId} {
-      // A user can read or write to a chat only if they are a member.
       allow read, write: if request.auth != null && request.auth.uid in resource.data.memberIds;
     }
     match /chats/{chatId}/messages/{messageId} {
-      // A user can read or write messages in a chat they are a member of.
       allow read, write: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.memberIds;
     }
 
     // Rules for Admin Activity Logs
     match /admin_logs/{logId} {
-      // All authenticated users can read the logs.
       allow read: if request.auth != null;
-      // Only admins can create new log entries. Logs are immutable.
       allow create: if isAdmin();
       allow update, delete: if false; // Prevent logs from being changed or deleted.
     }
