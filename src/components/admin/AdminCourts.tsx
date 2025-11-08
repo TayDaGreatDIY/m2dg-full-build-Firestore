@@ -13,7 +13,7 @@ import { useUser } from "@/firebase";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -176,7 +176,9 @@ function CourtFormDialog({ trigger, court, onFormSubmit }: { trigger: React.Reac
                  <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <DialogHeader>
+                          <VisuallyHidden><DialogTitle>{court ? 'Edit Court' : 'Add New Court'}</DialogTitle></VisuallyHidden>
                           <DialogTitle>{court ? 'Edit Court' : 'Add New Court'}</DialogTitle>
+                          <DialogDescription />
                         </DialogHeader>
                         <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
                             <FormField control={form.control} name="name" render={({ field }) => (
