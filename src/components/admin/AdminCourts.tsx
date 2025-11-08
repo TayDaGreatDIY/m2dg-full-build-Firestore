@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, addDoc, updateDoc, deleteDoc, doc, writeBatch, serverTimestamp } from "firebase/firestore";
 import type { Court } from "@/lib/types";
@@ -260,3 +260,5 @@ function DeleteCourtDialog({ courtId, courtName, onDelete }: { courtId: string; 
         </AlertDialog>
     );
 }
+
+    
