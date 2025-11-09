@@ -65,7 +65,7 @@ export default function AiTrainerPage() {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-screen">
       <DesktopHeader pageTitle="AI Trainer" />
       <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full min-h-0">
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
