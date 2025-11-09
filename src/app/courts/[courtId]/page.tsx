@@ -1,67 +1,78 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { doc, updateDoc, increment, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, increment, getDoc, Timestamp } from 'firebase/firestore';
 import { courts } from '@/lib/courtData';
 import { useUser, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { Loader2, LocateFixed } from 'lucide-react';
+import { Loader2, LocateFixed, WifiOff, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-type CourtType = (typeof courts)[0];
+import type { Court } from '@/lib/types';
+import type { User } from '@/lib/types';
 
 export default function CourtPage() {
   const params = useParams();
   const { courtId } = params;
   const { toast } = useToast();
 
-  const [court, setCourt] = useState<CourtType | null>(null);
+  const [court, setCourt] = useState<Court | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
   const [isWithinRadius, setIsWithinRadius] = useState(false);
-  const [lastCheckInTime, setLastCheckInTime] = useState<string | null>(null);
-  const [locationStatus, setLocationStatus] = useState<
-    'idle' | 'loading' | 'success' | 'error'
-  >('loading');
+  const [lastCheckInTime, setLastCheckInTime] = useState<Timestamp | null>(null);
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('loading');
   const [locationError, setLocationError] = useState<string | null>(null);
   
   const { user: authUser } = useUser();
   const firestore = useFirestore();
+  const watchIdRef = useRef<number | null>(null);
 
-  // Load court details
+
+  // Load court details from static data
   useEffect(() => {
     const found = courts.find((c) => c.id === courtId);
     setCourt(found || null);
   }, [courtId]);
 
-  // Load user's last check-in time
+
+  // Load user's last check-in time from Firestore
   useEffect(() => {
     if (!authUser || !firestore) return;
     const userRef = doc(firestore, 'users', authUser.uid);
     getDoc(userRef).then((docSnap) => {
       if (docSnap.exists()) {
-        const userData = docSnap.data();
-        if (userData.lastCheckInTime) {
-          setLastCheckInTime(userData.lastCheckInTime);
+        const userData = docSnap.data() as User;
+        if (userData.lastCheckIn) {
+          setLastCheckInTime(userData.lastCheckIn);
         }
       }
     });
   }, [authUser, firestore]);
 
-  // 🚀 Auto-request location with high accuracy
+  
+  // 🚀 Auto-request and watch location with high accuracy
   useEffect(() => {
     if (!court) return;
 
     setLocationStatus('loading');
     
-    const watchId = navigator.geolocation.watchPosition(
+    // Clear any existing watch
+    if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+    }
+    
+    watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
-        const { latitude, longitude } = pos.coords;
+        const { latitude, longitude, accuracy } = pos.coords;
+        console.log("📍 GPS Update:", { latitude, longitude, accuracy });
+        console.log("🎯 Court Coords:", { lat: court.latitude, lon: court.longitude });
+        
         const dist = getDistanceFromLatLonInMeters(
           latitude,
           longitude,
           court.latitude,
           court.longitude
         );
+
         setDistance(dist);
         setIsWithinRadius(dist <= court.radius);
         setLocationStatus('success');
@@ -75,8 +86,12 @@ export default function CourtPage() {
       { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
     );
 
-    // cleanup
-    return () => navigator.geolocation.clearWatch(watchId);
+    // cleanup on component unmount
+    return () => {
+        if(watchIdRef.current !== null) {
+            navigator.geolocation.clearWatch(watchIdRef.current);
+        }
+    }
   }, [court]);
 
 
@@ -84,7 +99,7 @@ export default function CourtPage() {
   const canCheckIn = () => {
     if (!lastCheckInTime) return true;
     const now = new Date();
-    const last = new Date(lastCheckInTime);
+    const last = lastCheckInTime.toDate();
     const diffHours = (now.getTime() - last.getTime()) / (1000 * 60 * 60);
     return diffHours >= 2;
   };
@@ -108,14 +123,20 @@ export default function CourtPage() {
 
     try {
       const userRef = doc(firestore, 'users', authUser.uid);
-      const newCheckInTime = new Date().toISOString();
+      const newCheckInTimestamp = Timestamp.now();
+
       await updateDoc(userRef, {
         xp: increment(25),
-        lastCheckInTime: newCheckInTime,
+        lastCheckIn: newCheckInTimestamp,
         currentCourtId: courtId,
       });
-      setLastCheckInTime(newCheckInTime);
-      toast({ title: "✅ Checked in!", description: `+25 XP earned at ${court?.name}` });
+
+      setLastCheckInTime(newCheckInTimestamp);
+      toast({ 
+          title: "✅ Checked in!", 
+          description: `+25 XP earned at ${court?.name}`,
+          className: "bg-green-600/20 border-green-500/50 text-white"
+      });
     } catch (error) {
       console.error('Check-in failed:', error);
       toast({ variant: 'destructive', title: 'Check-in Failed', description: 'Please try again.' });
@@ -144,22 +165,23 @@ export default function CourtPage() {
 
   const renderContent = () => {
     if (!court) {
-       return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin text-primary" size={32} /></div>;
+       return <div className="flex justify-center items-center h-64"><p>Court not found.</p></div>;
     }
     
     if (locationStatus === 'loading') {
        return (
          <div className="flex flex-col items-center justify-center h-64 gap-4">
             <Loader2 className="animate-spin text-primary" size={32} />
-            <p className="text-white/60">Getting your location...</p>
+            <p className="text-white/60">Fetching GPS signal...</p>
          </div>
        );
     }
     
     if (locationStatus === 'error') {
        return (
-          <div className="text-center">
-            <p className="text-red-400 text-sm">
+          <div className="text-center bg-destructive/10 p-4 rounded-lg">
+             <WifiOff className="mx-auto text-destructive" size={24} />
+            <p className="text-red-400 text-sm mt-2">
                 {locationError}
             </p>
           </div>
@@ -167,49 +189,53 @@ export default function CourtPage() {
     }
 
     return (
-        <>
-            <p className="text-white/50 mt-2 text-sm">
-            {distance !== null
-              ? `${Math.round(distance)} meters away`
-              : 'Locating...'}
-          </p>
+        <div className="space-y-4">
+            <div className="text-center">
+                <p className="text-sm text-white/50">Your distance</p>
+                <p className="text-4xl font-bold font-headline">
+                    {distance !== null ? Math.round(distance) : '---'}
+                    <span className="text-2xl text-white/60">m</span>
+                </p>
+            </div>
 
-          <Button
-            onClick={handleCheckIn}
-            disabled={!isWithinRadius || !authUser || !canCheckIn()}
-            className={`mt-6 w-full font-bold transition-all ${
-                isWithinRadius && authUser && canCheckIn()
-                ? 'bg-orange text-black hover:brightness-110'
-                : 'bg-muted text-white/50 cursor-not-allowed'
-            }`}
-            >
-            {isWithinRadius ? '✅ Check In' : '📍 Move Closer to Check In'}
-          </Button>
+            <Button
+                onClick={handleCheckIn}
+                disabled={!isWithinRadius || !authUser || !canCheckIn()}
+                size="lg"
+                className={`w-full font-bold transition-all text-base ${
+                    isWithinRadius && authUser && canCheckIn()
+                    ? 'bg-green-600 text-white hover:bg-green-500'
+                    : 'bg-muted text-white/50 cursor-not-allowed'
+                }`}
+                >
+                {isWithinRadius ? <CheckCircle size={20}/> : <LocateFixed size={20}/>}
+                {isWithinRadius ? 'Check In & Earn XP' : 'Move Closer to Check In'}
+            </Button>
 
-          {!canCheckIn() && (
-            <p className="text-center text-sm text-yellow-400 mt-4">
-              Cooldown active. You can check in again later.
-            </p>
-          )}
-        </>
+            {!canCheckIn() && (
+                <p className="text-center text-sm text-yellow-400 mt-2">
+                Cooldown active. You can check in again later.
+                </p>
+            )}
+        </div>
     );
   };
 
 
   return (
     <div className="p-6 text-white min-h-screen bg-background">
-      <div className="max-w-md mx-auto bg-card p-6 rounded-lg">
+      <div className="max-w-md mx-auto bg-card p-6 rounded-lg shadow-lg">
           {court ? (
                <>
-                <h1 className="text-2xl font-bold font-headline text-gold">
+                <h1 className="text-2xl font-bold font-headline text-gold text-center mb-1">
                     {court.name}
                 </h1>
-                <p className="text-white/70">{court.address}</p>
+                <p className="text-white/70 text-center mb-6">{court.address}</p>
                 {renderContent()}
                </>
           ) : (
              <div className="flex justify-center items-center h-64">
-                <p>Court not found.</p>
+                <Loader2 className="animate-spin text-primary" size={32} />
             </div>
           )}
       </div>
