@@ -1,10 +1,11 @@
+
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { DesktopHeader } from '@/components/ui/TopNav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send, Bot, Loader2, Mic, Speaker, Play, Pause } from 'lucide-react';
+import { Send, Bot, Loader2, Mic, Play, Pause } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { useUser } from '@/firebase';
@@ -13,6 +14,8 @@ import { aiTrainerFlow } from '@/ai/flows/ai-trainer-flow';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+
 
 declare global {
   interface Window {
@@ -24,7 +27,6 @@ declare global {
 type Message = {
   role: 'user' | 'assistant';
   content: string;
-  audioUrl?: string | null;
 };
 
 export default function AiTrainerPage() {
@@ -34,12 +36,95 @@ export default function AiTrainerPage() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  
+  // Voice and Audio State
   const [autoPlay, setAutoPlay] = useState(true);
-  const [activeAudio, setActiveAudio] = useState<string | null>(null);
+  const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
+  const [showUnlockBanner, setShowUnlockBanner] = useState(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+
+  // --- Voice & Audio Unlock Logic ---
+  
+  useEffect(() => {
+    // Check localStorage for user preferences on mount
+    const storedAutoPlay = localStorage.getItem('m2dg_voice_autoplay');
+    if (storedAutoPlay !== null) {
+      setAutoPlay(JSON.parse(storedAutoPlay));
+    }
+    
+    const storedAudioUnlocked = localStorage.getItem('m2dg_voice_unlocked');
+    if (storedAudioUnlocked === '1') {
+      setIsAudioUnlocked(true);
+    } else {
+        // Show banner only if on a touch device (likely iPhone) and not yet unlocked
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        if (isTouchDevice) {
+            setShowUnlockBanner(true);
+        }
+    }
+  }, []);
+
+  const unlockAudio = useCallback(() => {
+    if (isAudioUnlocked) return;
+
+    // Create and resume AudioContext
+    if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    if (audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume();
+    }
+    
+    // Set state and localStorage flag
+    setIsAudioUnlocked(true);
+    setShowUnlockBanner(false);
+    localStorage.setItem('m2dg_voice_unlocked', '1');
+    console.log("🔊 Audio Unlocked");
+
+    // Clean up event listener
+    window.removeEventListener('click', unlockAudio);
+    window.removeEventListener('touchstart', unlockAudio);
+  }, [isAudioUnlocked]);
+  
+  useEffect(() => {
+    if (!isAudioUnlocked) {
+        window.addEventListener('click', unlockAudio, { once: true });
+        window.addEventListener('touchstart', unlockAudio, { once: true });
+    }
+    return () => {
+        window.removeEventListener('click', unlockAudio);
+        window.removeEventListener('touchstart', unlockAudio);
+    }
+  }, [isAudioUnlocked, unlockAudio]);
+
+
+  // --- Speech Synthesis (TTS) ---
+
+  const speak = (text: string) => {
+    if (!autoPlay || !isAudioUnlocked || !window.speechSynthesis) return;
+
+    window.speechSynthesis.cancel(); // Stop any currently playing speech
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.pitch = 1;
+    utterance.rate = 1;
+
+    // Find a good voice
+    const voices = window.speechSynthesis.getVoices();
+    utterance.voice = voices.find(v => /Samantha|Zoe|Allison|en-US/i.test(v.name)) || voices.find(v => v.lang === 'en-US') || voices[0];
+    
+    setTimeout(() => {
+        window.speechSynthesis.speak(utterance);
+    }, 150); // Slight debounce
+  };
+
+
+  // --- Core Chat Logic ---
 
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
@@ -62,25 +147,11 @@ export default function AiTrainerPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-  
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.onended = () => setActiveAudio(null);
-    }
-  }, [activeAudio]);
 
-  const playAudio = (url: string) => {
-    if (audioRef.current && activeAudio === url) {
-      audioRef.current.pause();
-      setActiveAudio(null);
-      return;
-    }
-    if (audioRef.current) {
-      audioRef.current.src = url;
-      audioRef.current.play();
-      setActiveAudio(url);
-    }
-  };
+  const handleToggleAutoPlay = (checked: boolean) => {
+      setAutoPlay(checked);
+      localStorage.setItem('m2dg_voice_autoplay', JSON.stringify(checked));
+  }
 
   const handleStartListening = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -107,16 +178,11 @@ export default function AiTrainerPage() {
     recognitionRef.current.onresult = (event: any) => {
       const speech = event.results[0][0].transcript;
       setInput(speech);
-      handleSubmit(null, speech);
+      handleSubmit(undefined, speech); // Pass event as undefined
     };
 
-    recognitionRef.current.onstart = () => {
-      setIsListening(true);
-    };
-    
-    recognitionRef.current.onend = () => {
-      setIsListening(false);
-    };
+    recognitionRef.current.onstart = () => setIsListening(true);
+    recognitionRef.current.onend = () => setIsListening(false);
 
     recognitionRef.current.onerror = (event: any) => {
         console.error("Speech recognition error", event.error);
@@ -142,13 +208,14 @@ export default function AiTrainerPage() {
     setIsLoading(true);
 
     try {
-        const { reply, audioUrl } = await aiTrainerFlow({ prompt: currentInput, voice: true });
-        const assistantMessage: Message = { role: 'assistant', content: reply, audioUrl };
+        const { reply } = await aiTrainerFlow({ prompt: currentInput, voice: false }); // Voice generation handled by client
+        const assistantMessage: Message = { role: 'assistant', content: reply };
         setMessages((prev) => [...prev, assistantMessage]);
-
-        if (autoPlay && audioUrl) {
-            playAudio(audioUrl);
+        
+        if (autoPlay) {
+            speak(reply);
         }
+
     } catch (error) {
       console.error('AI Trainer error:', error);
       toast({
@@ -170,12 +237,22 @@ export default function AiTrainerPage() {
     <div className="flex flex-col h-screen">
       <DesktopHeader pageTitle="AI Trainer" />
       <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full min-h-0">
+        
+        {showUnlockBanner && (
+            <Alert variant="default" className="m-2 bg-gold/10 border-gold/50 text-gold text-center">
+                <AlertDescription>
+                 🔊 Tap anywhere to enable voice playback on your iPhone.
+                </AlertDescription>
+            </Alert>
+        )}
+
         <div className='flex items-center justify-end px-4 pt-2'>
              <div className="flex items-center space-x-2">
-                <Switch id="autoplay-switch" checked={autoPlay} onCheckedChange={setAutoPlay} />
+                <Switch id="autoplay-switch" checked={autoPlay} onCheckedChange={handleToggleAutoPlay} />
                 <Label htmlFor="autoplay-switch" className='text-xs text-white/60'>Auto-play Voice</Label>
             </div>
         </div>
+
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-6 pb-4">
             {messages.map((m, index) => (
@@ -200,16 +277,6 @@ export default function AiTrainerPage() {
                   )}
                 >
                   <p className="whitespace-pre-wrap">{m.content}</p>
-                   {m.audioUrl && (
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute -bottom-4 -right-2 h-8 w-8 rounded-full bg-card hover:bg-orange/80 group-hover:opacity-100 opacity-60 transition-opacity"
-                        onClick={() => playAudio(m.audioUrl!)}
-                    >
-                        {activeAudio === m.audioUrl ? <Pause size={14} /> : <Play size={14} />}
-                    </Button>
-                  )}
                 </div>
                 {m.role === 'user' && (
                   <UserAvatar
@@ -252,7 +319,6 @@ export default function AiTrainerPage() {
           </form>
         </div>
       </div>
-      <audio ref={audioRef} className="hidden" />
     </div>
   );
 }
