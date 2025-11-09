@@ -9,9 +9,14 @@
 
 // Firebase Functions + logger
 const { setGlobalOptions } = require("firebase-functions");
-const { onRequest } = require("firebase-functions/v2/https");
+const { onRequest, onCall } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+const axios = require("axios");
+
+// Initialize Firebase Admin SDK
+admin.initializeApp();
 
 // OpenAI SDK
 const OpenAI = require("openai");
@@ -106,3 +111,61 @@ Your purpose is to help me become the best basketball player and person I can be
         }
     }
 );
+
+// ======================================================
+// Backfill Court Coordinates Cloud Function
+// This callable function iterates through courts and updates their GPS coordinates.
+// ======================================================
+exports.backfillCourtCoordinates = onCall(async (data, context) => {
+  // Optional: Check if the user is an admin
+  // if (!context.auth || context.auth.token.role !== 'admin') {
+  //   throw new functions.https.HttpsError('permission-denied', 'Must be an admin to run this operation.');
+  // }
+  
+  const db = admin.firestore();
+  const courtsRef = db.collection("courts");
+  const snapshot = await courtsRef.get();
+
+  const updates = [];
+  const promises = [];
+
+  for (const doc of snapshot.docs) {
+    const court = doc.data();
+    // Check if latitude or longitude is missing
+    if (!court.latitude || !court.longitude) {
+      const address = encodeURIComponent(court.address || `${court.name}, ${court.city}`);
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${address}`;
+
+      logger.info(`Geocoding court: ${court.name} with address: ${address}`);
+
+      const promise = axios.get(url, { headers: { 'User-Agent': 'M2DG-App-Firebase-Function/1.0' } })
+        .then(response => {
+          const location = response.data?.[0];
+          if (location && location.lat && location.lon) {
+            logger.info(`Found coordinates for ${court.name}: ${location.lat}, ${location.lon}`);
+            updates.push({ name: court.name, success: true, lat: location.lat, lon: location.lon });
+            return doc.ref.update({
+              latitude: parseFloat(location.lat),
+              longitude: parseFloat(location.lon),
+            });
+          } else {
+            logger.warn(`No location found for ${court.name}`);
+            updates.push({ name: court.name, success: false, reason: "No location found" });
+            return Promise.resolve();
+          }
+        })
+        .catch(error => {
+          logger.error(`Error geocoding ${court.name}:`, error.message);
+          updates.push({ name: court.name, success: false, reason: error.message });
+          return Promise.resolve();
+        });
+        
+      promises.push(promise);
+    }
+  }
+
+  await Promise.all(promises);
+
+  logger.info("Backfill complete. Results:", updates);
+  return { status: "Complete", updates };
+});
