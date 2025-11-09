@@ -6,6 +6,8 @@ import { db } from "@/firebase/config";
 import { doc, updateDoc, increment, getDoc } from "firebase/firestore";
 import { courts } from "@/lib/courtData";
 import { useUser } from '@/firebase';
+import { Button } from "@/components/ui/button";
+import { Loader2, LocateFixed } from "lucide-react";
 
 type CourtType = (typeof courts)[0];
 
@@ -16,6 +18,8 @@ export default function CourtPage() {
   const [distance, setDistance] = useState<number | null>(null);
   const [isWithinRadius, setIsWithinRadius] = useState(false);
   const [lastCheckInTime, setLastCheckInTime] = useState<string | null>(null);
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [locationError, setLocationError] = useState<string | null>(null);
   const { user: authUser } = useUser();
 
   // 🧭 Load court details
@@ -39,10 +43,12 @@ export default function CourtPage() {
         }
     })
   }, [authUser]);
-
-  // 🧭 Get user's GPS location
-  useEffect(() => {
+  
+  const handleLocationRequest = () => {
     if (!court) return;
+    setLocationStatus('loading');
+    setLocationError(null);
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const userLat = pos.coords.latitude;
@@ -56,11 +62,17 @@ export default function CourtPage() {
         );
         setDistance(dist);
         setIsWithinRadius(dist <= court.radius);
+        setLocationStatus('success');
       },
-      (err) => console.error("Location error:", err),
+      (err) => {
+        console.error("Location error:", err);
+        setLocationStatus('error');
+        setLocationError(err.message);
+      },
       { enableHighAccuracy: true }
     );
-  }, [court]);
+  };
+
 
   // 🕓 Prevent abuse: cooldown check
   const canCheckIn = () => {
@@ -119,6 +131,55 @@ export default function CourtPage() {
     return R * c;
   }
 
+  const renderCheckInButton = () => {
+    if (locationStatus === 'idle') {
+      return (
+         <Button
+            onClick={handleLocationRequest}
+            className="mt-6 w-full"
+            variant="outline"
+          >
+            <LocateFixed size={16} /> Get Location to Check In
+        </Button>
+      );
+    }
+    if (locationStatus === 'loading') {
+       return (
+         <Button disabled className="mt-6 w-full" variant="outline">
+            <Loader2 className="animate-spin" /> Checking Location...
+        </Button>
+      );
+    }
+    if (locationStatus === 'error') {
+       return (
+         <div className="mt-6 text-center">
+            <p className="text-red-400 text-sm">Could not get location. Please enable GPS and allow location access.</p>
+             <Button
+                onClick={handleLocationRequest}
+                className="mt-2"
+                variant="secondary"
+              >
+                Try Again
+            </Button>
+         </div>
+      );
+    }
+     if (locationStatus === 'success') {
+      return (
+         <Button
+            onClick={handleCheckIn}
+            disabled={!isWithinRadius || !authUser}
+            className={`mt-6 w-full font-bold transition-all ${
+              isWithinRadius && authUser ? "bg-orange text-black hover:brightness-110" : "bg-muted text-white/50 cursor-not-allowed"
+            }`}
+          >
+            {isWithinRadius ? "✅ Check In" : "📍 Move Closer to Check In"}
+          </Button>
+      )
+    }
+    return null;
+  }
+
   return (
     <div className="p-6 text-white min-h-screen bg-background">
       {court ? (
@@ -126,22 +187,17 @@ export default function CourtPage() {
           <h1 className="text-2xl font-bold font-headline text-gold">{court.name}</h1>
           <p className="text-white/70">{court.address}</p>
           <p className="text-white/50 mt-2 text-sm">
-            {distance ? `${Math.round(distance)} meters away` : "Calculating distance..."}
+            {distance !== null ? `${Math.round(distance)} meters away` : "Press button to check your distance"}
           </p>
 
-          <button
-            onClick={handleCheckIn}
-            disabled={!isWithinRadius || !authUser}
-            className={`mt-6 px-6 py-3 rounded-lg w-full font-bold transition-all ${
-              isWithinRadius && authUser ? "bg-orange text-black hover:brightness-110" : "bg-muted text-white/50 cursor-not-allowed"
-            }`}
-          >
-            {isWithinRadius ? "✅ Check In" : "📍 Move Closer to Check In"}
-          </button>
+          {renderCheckInButton()}
+          
           {!canCheckIn() && <p className="text-center text-sm text-yellow-400 mt-4">Cooldown active. You can check in again later.</p>}
         </div>
       ) : (
-        <p>Loading court...</p>
+        <div className="flex justify-center items-center h-64">
+            <Loader2 className="animate-spin text-primary" size={32} />
+        </div>
       )}
     </div>
   );
