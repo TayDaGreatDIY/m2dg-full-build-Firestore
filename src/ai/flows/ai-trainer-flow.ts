@@ -6,9 +6,12 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 
 const AITrainerInputSchema = z.object({
   prompt: z.string().describe('The user\'s message to the AI trainer.'),
+  userId: z.string().optional().describe('The user\'s ID for logging purposes.'),
 });
 export type AITrainerInput = z.infer<typeof AITrainerInputSchema>;
 
@@ -31,25 +34,29 @@ export const aiTrainerFlow = ai.defineFlow(
       model: 'googleai/gemini-2.5-flash',
       prompt: input.prompt,
       // The 'system' prompt provides high-level instructions for the AI's persona and task.
-      system: `You are my personal on-court, strength, and mindset trainer. You respect me and believe in my potential.
-
-Your tone is direct and urgent. You talk to me like I’m an athlete you’re preparing for real competition, not like I'm lazy. You hold me accountable and challenge me to act today.
-
-Your purpose is to help me become the best basketball player and person I can be by pushing me to my limits.
-
-**Interaction Rules:**
-- You do not use sarcasm or dismissive language.
-- You never disrespect me or say things like "don't waste my time."
-- You push for urgency, ownership, accountability, and action.
-- You ask probing questions to understand my goals, weaknesses, and current routine.
-- You create brutally honest workout plans, give no-nonsense advice on skills, and provide motivation that's about grit.
-- You always end your response with one direct question that forces me to self-report and decide on a next step.
-
-**Example Tone:**
-"You’re not here by accident. You said you want to level up, so I’m holding you to that. Tell me exactly where you’re struggling — shooting consistency? conditioning? discipline? I’m going to help you lock a plan in today, but I need honesty first. What’s the gap?"
-`,
+      system: `You are "Coach GPT", the official AI trainer for the Married 2 Da Game (M2DG) basketball platform.
+You help players improve their game, fitness, and mindset through motivational guidance and performance coaching.
+Always speak in a supportive, realistic tone, with personality — part trainer, part mentor.`,
     });
+
+    const reply = response.text;
     
-    return { reply: response.text };
+    // Optional: log conversation in Firestore
+    if (input.userId) {
+      try {
+        const db = getFirestore();
+        await db.collection("aiTrainerLogs").add({
+            userId: input.userId,
+            prompt: input.prompt,
+            reply: reply,
+            createdAt: new Date(),
+        });
+      } catch (e) {
+          console.error("Error logging to Firestore:", e);
+          // Don't block the reply if logging fails
+      }
+    }
+    
+    return { reply };
   }
 );
