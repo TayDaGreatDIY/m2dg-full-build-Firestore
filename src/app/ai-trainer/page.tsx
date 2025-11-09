@@ -9,15 +9,21 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { useUser } from '@/firebase';
 import { cn } from '@/lib/utils';
+import { aiTrainerFlow } from '@/ai/flows/ai-trainer-flow';
 
 type Message = {
   role: 'user' | 'assistant';
   content: string;
 };
 
+const initialMessage: Message = {
+    role: 'assistant',
+    content: "Ready to take your game to the next level? Ask me anything from creating a workout plan to analyzing your last game."
+};
+
 export default function AiTrainerPage() {
   const { user: authUser } = useUser();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -43,27 +49,14 @@ export default function AiTrainerPage() {
     setIsLoading(true);
 
     try {
-      // 🔥 Force local emulator URL for testing
-      const baseUrl = 'http://127.0.0.1:5001/m2dg-full-build/us-central1/getAiTrainerReply';
-
-      const response = await fetch(baseUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage.content }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const assistantMessage: Message = { role: 'assistant', content: data.reply };
-      setMessages((prev) => [...prev, assistantMessage]);
+        const result = await aiTrainerFlow({ prompt: userMessage.content });
+        const assistantMessage: Message = { role: 'assistant', content: result.reply };
+        setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
-      console.error('Fetch error:', error);
+      console.error('AI Trainer Flow error:', error);
       const errorMessage: Message = {
         role: 'assistant',
-        content: '⚠️ I’m having trouble connecting right now. Please make sure the Firebase emulator is running.',
+        content: '⚠️ I’m having trouble connecting to the trainer right now. Please try again in a moment.',
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -77,17 +70,6 @@ export default function AiTrainerPage() {
       <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full min-h-0">
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-6 pb-4">
-            {messages.length === 0 && (
-              <div className="text-center p-8 rounded-lg bg-card border border-white/10">
-                <Bot className="mx-auto h-12 w-12 text-orange" />
-                <h2 className="mt-4 text-xl font-bold font-headline">Your Personal AI Coach</h2>
-                <p className="mt-2 text-sm text-white/60">
-                  Ready to take your game to the next level? Ask me anything from creating a workout plan
-                  to analyzing your last game.
-                </p>
-              </div>
-            )}
-
             {messages.map((m, index) => (
               <div
                 key={index}
