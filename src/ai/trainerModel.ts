@@ -18,6 +18,7 @@ export async function getTrainerReply(userMessage: string): Promise<string> {
 
   try {
     // Step 2: Call your live Firebase AI Trainer Function
+    // Replace this URL with your actual function URL after deployment
     const response = await fetch(
       "https://getaitrainerreply-qhmdrry7ca-uc.a.run.app",
       {
@@ -31,7 +32,8 @@ export async function getTrainerReply(userMessage: string): Promise<string> {
 
     if (!response.ok) {
       console.error("Trainer API Error:", response.statusText);
-      return "Hmm, I couldn’t reach the trainer right now. Try again in a moment.";
+      const errorData = await response.json().catch(() => ({}));
+      return `Hmm, I couldn’t reach the trainer right now. (Error: ${errorData.error || response.statusText})`;
     }
 
     const data = await response.json();

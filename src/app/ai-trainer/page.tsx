@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -10,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { useUser } from '@/firebase';
 import { cn } from '@/lib/utils';
-import { aiTrainerFlow } from '@/ai/flows/ai-trainer-flow';
+import { getTrainerReply } from '@/ai/trainerModel';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -50,15 +49,16 @@ export default function AiTrainerPage() {
 
     const userMessage: Message = { role: 'user', content: input };
     setMessages((prev) => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
     setIsLoading(true);
 
     try {
-        const result = await aiTrainerFlow({ prompt: userMessage.content });
-        const assistantMessage: Message = { role: 'assistant', content: result.reply };
+        const reply = await getTrainerReply(currentInput);
+        const assistantMessage: Message = { role: 'assistant', content: reply };
         setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
-      console.error('AI Trainer Flow error:', error);
+      console.error('AI Trainer error:', error);
       const errorMessage: Message = {
         role: 'assistant',
         content: '⚠️ I’m having trouble connecting to the trainer right now. Please try again in a moment.',

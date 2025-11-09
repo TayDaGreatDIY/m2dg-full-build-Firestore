@@ -19,17 +19,15 @@ const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
 let openai = null;
 (() => {
   try {
-    const key =
-      process.env.OPENAI_API_KEY ||
-      OPENAI_API_KEY.value() ||
-      (functions.config && functions.config().openai?.key);
+    // Resolve the key from secrets, then environment variables.
+    const key = OPENAI_API_KEY.value() || process.env.OPENAI_API_KEY || (functions.config && functions.config().openai?.key);
 
     if (key) {
       const OpenAI = require("openai");
       openai = new OpenAI({ apiKey: key });
       logger.info("✅ OpenAI client initialized successfully.");
     } else {
-      logger.warn("⚠️ OpenAI API key not found in secrets or env vars.");
+      logger.warn("⚠️ OpenAI API key not found in secrets or env vars. The getAiTrainerReply function will be disabled.");
     }
   } catch (e) {
     logger.error("❌ Failed to initialize OpenAI client:", e);
@@ -170,25 +168,31 @@ exports.getAiTrainerReply = onRequest(
     secrets: [OPENAI_API_KEY],
   },
   async (req, res) => {
+    // Ensure responses from this function are not cached by browsers or CDNs
+    res.set('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+    
     if (req.method !== "POST") {
+      res.setHeader("Allow", "POST");
       return res.status(405).json({ error: "Only POST requests are accepted" });
     }
 
     if (!openai) {
+      logger.error("getAiTrainerReply called but OpenAI client is not initialized.");
       return res.status(503).json({
-        error: "AI is not configured. Contact support.",
+        error: "AI service is not configured. The API key may be missing.",
       });
     }
 
     try {
       let { message, messages } = req.body;
       if (!messages && message) {
+        // If only a single message is sent, create the messages array
         messages = [{ role: "user", content: message }];
       }
 
-      if (!messages || !Array.isArray(messages)) {
+      if (!messages || !Array.isArray(messages) || messages.length === 0) {
         return res.status(400).json({
-          error: "Request body must contain { message: 'text' } or { messages: [...] }",
+          error: "Request body must contain a 'messages' array with at least one message.",
         });
       }
 
@@ -202,7 +206,8 @@ exports.getAiTrainerReply = onRequest(
 You help players improve their game, fitness, and mindset through motivational guidance and performance coaching.
 Always speak in a supportive, realistic tone, with personality — part trainer, part mentor.`,
           },
-          ...messages,
+          // Take the last 6 messages to provide context, for performance and cost.
+          ...messages.slice(-6),
         ],
       });
 
@@ -210,16 +215,17 @@ Always speak in a supportive, realistic tone, with personality — part trainer,
         completion.choices?.[0]?.message?.content ||
         "I'm here, ready to plan your next session. Tell me what skill or workout you want to focus on.";
 
-      logger.info("✅ AI Trainer replied:", reply.slice(0, 80));
+      logger.info("✅ AI Trainer replied successfully.");
       res.status(200).json({ reply });
     } catch (err) {
       logger.error("❌ getAiTrainerReply error:", err);
       res.status(500).json({
-        error: "Trainer is unavailable right now. Try again soon.",
+        error: "The AI trainer is unavailable right now. Please try again soon.",
       });
     }
   }
 );
+
 
 /* ----------------- Backfill Court Coordinates (Callable) ----------------- */
 exports.backfillCourtCoordinates = onCall(async (_data, context) => {
@@ -296,5 +302,3 @@ exports.backfillCourtCoordinates = onCall(async (_data, context) => {
   logger.info(`✅ Backfill complete. ${updates.length} processed.`);
   return { status: "Complete", updates };
 });
-
-    
