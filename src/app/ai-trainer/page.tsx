@@ -9,7 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { useUser } from '@/firebase';
 import { cn } from '@/lib/utils';
-import { getTrainerReply } from '@/ai/trainerModel';
+import { aiTrainerFlow } from '@/ai/flows/ai-trainer-flow';
+import { useToast } from '@/hooks/use-toast';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -23,6 +24,7 @@ const initialMessage: Message = {
 
 export default function AiTrainerPage() {
   const { user: authUser } = useUser();
+  const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -54,11 +56,17 @@ export default function AiTrainerPage() {
     setIsLoading(true);
 
     try {
-        const reply = await getTrainerReply(currentInput);
+        const { reply } = await aiTrainerFlow({ prompt: currentInput });
         const assistantMessage: Message = { role: 'assistant', content: reply };
         setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       console.error('AI Trainer error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'AI Trainer Error',
+        description: 'I’m having trouble connecting to the trainer right now. Please try again in a moment.',
+      });
+      // Optionally add the error message back to the chat history
       const errorMessage: Message = {
         role: 'assistant',
         content: '⚠️ I’m having trouble connecting to the trainer right now. Please try again in a moment.',
