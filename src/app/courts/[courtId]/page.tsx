@@ -103,20 +103,18 @@ export default function CourtDetailPage() {
      Get user's location
   ----------------------------- */
   useEffect(() => {
-    if (isMobile && court) {
+    if (isMobile && court?.latitude && court?.longitude) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           setUserLocation({ latitude, longitude });
-          if (court?.latitude && court?.longitude) {
-            const dist = getDistanceInMeters(
-              latitude,
-              longitude,
-              court.latitude,
-              court.longitude
-            );
-            setDistance(dist);
-          }
+          const dist = getDistanceInMeters(
+            latitude,
+            longitude,
+            court.latitude!,
+            court.longitude!
+          );
+          setDistance(dist);
           setLocationError(null);
         },
         (error) => {
@@ -143,7 +141,7 @@ export default function CourtDetailPage() {
   }, [firestore, courtId]);
 
   const { data: checkins, isLoading: areCheckinsLoading } = useCollection<CheckIn>(
-    checkinsQuery as any
+    checkinsQuery
   );
 
   /* --------------------------
@@ -158,7 +156,7 @@ export default function CourtDetailPage() {
   }, [firestore, courtId]);
 
   const { data: runs, isLoading: areRunsLoading } = useCollection<Run>(
-    runsQuery as any
+    runsQuery
   );
 
   const isCheckedIn =
@@ -518,4 +516,3 @@ export default function CourtDetailPage() {
     </>
   );
 }
-
