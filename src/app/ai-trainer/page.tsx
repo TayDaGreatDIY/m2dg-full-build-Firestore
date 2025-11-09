@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -31,7 +32,11 @@ export default function AiTrainerPage() {
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
       const viewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
-      if (viewport) viewport.scrollTop = viewport.scrollHeight;
+      if (viewport) {
+        setTimeout(() => {
+          viewport.scrollTop = viewport.scrollHeight;
+        }, 0);
+      }
     }
   };
 
@@ -41,7 +46,7 @@ export default function AiTrainerPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
 
     const userMessage: Message = { role: 'user', content: input };
     setMessages((prev) => [...prev, userMessage]);
@@ -85,7 +90,7 @@ export default function AiTrainerPage() {
                 )}
                 <div
                   className={cn(
-                    'max-w-md rounded-2xl px-4 py-3 text-sm',
+                    'max-w-md rounded-2xl px-4 py-3 text-sm shadow-md',
                     m.role === 'user'
                       ? 'bg-secondary text-white rounded-br-none'
                       : 'bg-card text-white/90 rounded-bl-none'
@@ -108,7 +113,7 @@ export default function AiTrainerPage() {
                 <div className="p-2 bg-orange rounded-full">
                   <Bot className="h-6 w-6 text-black" />
                 </div>
-                <div className="bg-card rounded-2xl rounded-bl-none px-4 py-3">
+                <div className="bg-card rounded-2xl rounded-bl-none px-4 py-3 shadow-md">
                   <Loader2 className="h-5 w-5 animate-spin text-white/50" />
                 </div>
               </div>
@@ -125,7 +130,7 @@ export default function AiTrainerPage() {
               className="flex-1"
               autoComplete="off"
             />
-            <Button type="submit" size="icon" disabled={isLoading || !input}>
+            <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
               <Send />
             </Button>
           </form>
