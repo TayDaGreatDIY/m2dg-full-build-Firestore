@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, ReactNode, useMemo } from 'react';
@@ -54,6 +55,6 @@ export function FirebaseProvider({ children, firebaseApp, auth, firestore, stora
   );
 }
 
-export function useMemoFirebase<T>(factory: () => T, deps: React.DependencyList | undefined): T {
+export function useMemoFirebase<T>(factory: () => T, deps: React.DependencyList): T {
   return useMemo(factory, deps);
 }
