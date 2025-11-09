@@ -31,6 +31,8 @@ const courtSchema = z.object({
   img: z.string().url("Must be a valid URL").optional().or(z.literal('')),
   verified: z.boolean().default(false),
   flagCount: z.number().default(0),
+  latitude: z.coerce.number().optional(),
+  longitude: z.coerce.number().optional(),
 });
 
 
@@ -61,7 +63,6 @@ export default function AdminCourts() {
   
   const sortedCourts = useMemo(() => {
     if (!courts) return [];
-    // This will sort by `verified` status, but you might want more complex sorting
     return courts.slice().sort((a, b) => (b.verified ? 1 : 0) - (a.verified ? 1 : 0) || a.name.localeCompare(b.name));
   }, [courts]);
   
@@ -151,15 +152,36 @@ function CourtFormDialog({ trigger, court, onFormSubmit }: { trigger: React.Reac
     
     const onSubmit = async (values: z.infer<typeof courtSchema>) => {
       setIsSubmitting(true);
+      let dataToSave: Partial<Court> & { createdAt?: any } = { ...values };
+
       try {
+        // If lat/lng are not manually entered, geocode the address
+        if (!values.latitude || !values.longitude) {
+            const encodedAddress = encodeURIComponent(values.address);
+            const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}`;
+            
+            const response = await fetch(geocodeUrl);
+            const geocodeData = await response.json();
+
+            if (geocodeData && geocodeData.length > 0) {
+                dataToSave.latitude = parseFloat(geocodeData[0].lat);
+                dataToSave.longitude = parseFloat(geocodeData[0].lon);
+            } else {
+                toast({ variant: "destructive", title: "Geocoding Failed", description: "Could not find coordinates for the address." });
+                setIsSubmitting(false);
+                return;
+            }
+        }
+
         if (court) {
           const courtRef = doc(firestore, "courts", court.id);
-          await updateDoc(courtRef, values);
-          toast({ title: "Court Updated!", description: `${values.name} has been updated.` });
+          await updateDoc(courtRef, dataToSave);
+          toast({ title: "Court Updated!", description: `${values.name} has been updated with verified coordinates.` });
           onFormSubmit('update', court.id);
         } else {
-          const newDocRef = await addDoc(collection(firestore, "courts"), values);
-          toast({ title: "Court Added!", description: `${values.name} has been added.` });
+          dataToSave.createdAt = serverTimestamp();
+          const newDocRef = await addDoc(collection(firestore, "courts"), dataToSave);
+          toast({ title: "Court Added!", description: `${values.name} has been added with verified coordinates.` });
           onFormSubmit('create', newDocRef.id);
         }
         setIsOpen(false);
@@ -218,6 +240,17 @@ function CourtFormDialog({ trigger, court, onFormSubmit }: { trigger: React.Reac
                                     </FormItem>
                                 )}
                             />
+                            <div className="space-y-2">
+                                <p className="text-sm font-medium text-white/70">Manual Coordinates (Optional)</p>
+                                <div className="grid grid-cols-2 gap-4">
+                                     <FormField control={form.control} name="latitude" render={({ field }) => (
+                                        <FormItem><FormLabel>Latitude</FormLabel><FormControl><Input type="number" step="any" {...field} /></FormControl><FormMessage /></FormItem>
+                                    )}/>
+                                    <FormField control={form.control} name="longitude" render={({ field }) => (
+                                        <FormItem><FormLabel>Longitude</FormLabel><FormControl><Input type="number" step="any" {...field} /></FormControl><FormMessage /></FormItem>
+                                    )}/>
+                                </div>
+                            </div>
                         </div>
                         <DialogFooter>
                             <Button type="button" variant="secondary" onClick={() => setIsOpen(false)}>Cancel</Button>
@@ -267,3 +300,4 @@ function DeleteCourtDialog({ courtId, courtName, onDelete }: { courtId: string; 
         </AlertDialog>
     );
 }
+
