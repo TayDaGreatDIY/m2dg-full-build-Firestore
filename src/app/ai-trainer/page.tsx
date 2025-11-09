@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Send, Bot, Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import UserAvatar from '@/components/ui/UserAvatar';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { cn } from '@/lib/utils';
 import { aiTrainerFlow, retrieveHistoryFlow } from '@/ai/flows/ai-trainer-flow';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +20,7 @@ type Message = {
 
 export default function AiTrainerPage() {
   const { user: authUser } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -40,7 +41,7 @@ export default function AiTrainerPage() {
   // Load message history on initial load
   useEffect(() => {
     async function loadHistory() {
-      if (!authUser) {
+      if (!authUser || !firestore) {
         setIsLoading(false);
         // Add initial welcome message if there's no user
          setMessages([{
@@ -51,7 +52,7 @@ export default function AiTrainerPage() {
       };
 
       try {
-        const { history } = await retrieveHistoryFlow(authUser.uid);
+        const { history } = await retrieveHistoryFlow({ userId: authUser.uid, firestore });
         if (history && history.length > 0) {
             const formattedHistory = history.map((m: any) => ({ role: m.role, content: m.content }));
             setMessages(formattedHistory);
@@ -80,7 +81,7 @@ export default function AiTrainerPage() {
     }
     loadHistory();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authUser]);
+  }, [authUser, firestore]);
 
 
   useEffect(() => {
@@ -89,7 +90,7 @@ export default function AiTrainerPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading || !authUser) return;
+    if (!input.trim() || isLoading || !authUser || !firestore) return;
 
     const userMessage: Message = { role: 'user', content: input };
     setMessages((prev) => [...prev, userMessage]);
@@ -98,7 +99,7 @@ export default function AiTrainerPage() {
     setIsLoading(true);
 
     try {
-        const { reply } = await aiTrainerFlow({ prompt: currentInput, userId: authUser.uid });
+        const { reply } = await aiTrainerFlow({ prompt: currentInput, userId: authUser.uid, firestore });
         const assistantMessage: Message = { role: 'assistant', content: reply };
         setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
