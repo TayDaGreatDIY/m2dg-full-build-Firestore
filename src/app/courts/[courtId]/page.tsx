@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -5,10 +6,10 @@ import { doc, updateDoc, increment, getDoc, Timestamp } from 'firebase/firestore
 import { courts } from '@/lib/courtData';
 import { useUser, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { Loader2, LocateFixed, WifiOff, CheckCircle } from 'lucide-react';
+import { Loader2, LocateFixed, WifiOff, CheckCircle, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Court } from '@/lib/types';
-import type { User } from '@/lib/types';
+import type { User as AppUser } from '@/lib/types';
 
 export default function CourtPage() {
   const params = useParams();
@@ -19,7 +20,7 @@ export default function CourtPage() {
   const [distance, setDistance] = useState<number | null>(null);
   const [isWithinRadius, setIsWithinRadius] = useState(false);
   const [lastCheckInTime, setLastCheckInTime] = useState<Timestamp | null>(null);
-  const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('loading');
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [locationError, setLocationError] = useState<string | null>(null);
   
   const { user: authUser } = useUser();
@@ -40,32 +41,55 @@ export default function CourtPage() {
     const userRef = doc(firestore, 'users', authUser.uid);
     getDoc(userRef).then((docSnap) => {
       if (docSnap.exists()) {
-        const userData = docSnap.data() as User;
+        const userData = docSnap.data() as AppUser;
         if (userData.lastCheckIn) {
           setLastCheckInTime(userData.lastCheckIn);
         }
       }
     });
   }, [authUser, firestore]);
-
   
-  // 🚀 Auto-request and watch location with high accuracy
+  // Check for geolocation permissions on mount
   useEffect(() => {
-    if (!court) return;
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: "geolocation" as PermissionName }).then((permissionStatus) => {
+        if (permissionStatus.state === 'denied') {
+          setLocationError("GPS permission denied. Please enable it in your browser settings.");
+          setLocationStatus('error');
+          toast({
+            variant: "destructive",
+            title: "GPS Permission Denied",
+            description: "Please allow precise location access for check-ins.",
+          });
+        }
+      });
+    }
+  }, [toast]);
 
+
+  const startWatchingPosition = () => {
     setLocationStatus('loading');
-    
+    setLocationError(null);
+
     // Clear any existing watch
     if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
+      navigator.geolocation.clearWatch(watchIdRef.current);
     }
     
+    if (!court) return;
+
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude, accuracy } = pos.coords;
         console.log("📍 GPS Update:", { latitude, longitude, accuracy });
         console.log("🎯 Court Coords:", { lat: court.latitude, lon: court.longitude });
         
+        if (accuracy > 100) { // If accuracy is worse than 100 meters, signal is weak
+            setLocationStatus('error');
+            setLocationError('Weak GPS signal. Move to an open area.');
+            return;
+        }
+
         const dist = getDistanceFromLatLonInMeters(
           latitude,
           longitude,
@@ -74,7 +98,8 @@ export default function CourtPage() {
         );
 
         setDistance(dist);
-        setIsWithinRadius(dist <= court.radius);
+        // Loosen radius for testing GPS drift
+        setIsWithinRadius(dist <= (court.radius ?? 400) + 200);
         setLocationStatus('success');
         setLocationError(null);
       },
@@ -82,17 +107,24 @@ export default function CourtPage() {
         console.error("GPS Error:", err);
         setLocationError(err.message || "Could not get location. Please enable GPS and allow location access.");
         setLocationStatus('error');
+        toast({
+            variant: 'destructive',
+            title: 'GPS Error',
+            description: err.message
+        });
       },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
     );
-
-    // cleanup on component unmount
+  };
+  
+  // Cleanup on component unmount
+  useEffect(() => {
     return () => {
         if(watchIdRef.current !== null) {
             navigator.geolocation.clearWatch(watchIdRef.current);
         }
     }
-  }, [court]);
+  }, []);
 
 
   // 🕓 Prevent abuse: cooldown check
@@ -168,26 +200,43 @@ export default function CourtPage() {
        return <div className="flex justify-center items-center h-64"><p>Court not found.</p></div>;
     }
     
+    if (locationStatus === 'idle' && !locationError) {
+        return (
+            <div className='text-center space-y-4'>
+                <p className='text-white/70'>Press the button to start GPS tracking for check-in.</p>
+                <Button onClick={startWatchingPosition} size="lg" className='w-full'>
+                    <LocateFixed size={20}/>
+                    Get My Location
+                </Button>
+            </div>
+        )
+    }
+    
     if (locationStatus === 'loading') {
        return (
          <div className="flex flex-col items-center justify-center h-64 gap-4">
             <Loader2 className="animate-spin text-primary" size={32} />
-            <p className="text-white/60">Fetching GPS signal...</p>
+            <p className="text-white/60">📍 Fetching GPS signal...</p>
          </div>
        );
     }
     
     if (locationStatus === 'error') {
        return (
-          <div className="text-center bg-destructive/10 p-4 rounded-lg">
+          <div className="text-center bg-destructive/10 p-4 rounded-lg space-y-4">
              <WifiOff className="mx-auto text-destructive" size={24} />
             <p className="text-red-400 text-sm mt-2">
                 {locationError}
             </p>
+            <Button onClick={startWatchingPosition} variant="outline" size="sm">
+                <RefreshCw size={14}/>
+                Retry
+            </Button>
           </div>
        );
     }
 
+    // Success state
     return (
         <div className="space-y-4">
             <div className="text-center">
@@ -196,6 +245,7 @@ export default function CourtPage() {
                     {distance !== null ? Math.round(distance) : '---'}
                     <span className="text-2xl text-white/60">m</span>
                 </p>
+                 {isWithinRadius && <p className='text-green-400 text-sm font-bold'>✅ Within range</p>}
             </div>
 
             <Button
@@ -217,6 +267,11 @@ export default function CourtPage() {
                 Cooldown active. You can check in again later.
                 </p>
             )}
+
+            <Button onClick={startWatchingPosition} variant="outline" size="sm">
+                <RefreshCw size={14} className={locationStatus === 'loading' ? 'animate-spin' : ''}/>
+                Refresh My Location
+            </Button>
         </div>
     );
   };
