@@ -1,28 +1,45 @@
-
 'use server';
 
-import OpenAI from 'openai';
-import { aiTrainerFlow } from '@/ai/flows/ai-trainer-flow';
 import { moderateContent } from '@/ai/flows/moderate-content-flow';
 
 /**
- * Calls the AI model to get a response based on the user's message.
- * This is a placeholder and should be replaced with a real model call.
+ * Calls the deployed Firebase AI Trainer Function to get a response.
+ * This securely routes messages through your getAITrainerReply endpoint.
  * 
  * @param userMessage The message from the user.
  * @returns A promise that resolves to the AI's reply string.
  */
 export async function getTrainerReply(userMessage: string): Promise<string> {
+  // Step 1: Content moderation first
   const moderationResult = await moderateContent(userMessage);
-    if (!moderationResult.passed) {
-      return "I can't respond to that. Let's keep the conversation respectful and focused on basketball.";
-    }
-  
+  if (!moderationResult.passed) {
+    return "I can't respond to that. Let's keep the conversation respectful and focused on basketball.";
+  }
+
   try {
-    const { reply } = await aiTrainerFlow({ prompt: userMessage });
-    return reply;
+    // Step 2: Call your live Firebase AI Trainer Function
+    const response = await fetch(
+      "https://getaitrainerreply-qhmdrry7ca-uc.a.run.app",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: userMessage }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Trainer API Error:", response.statusText);
+      return "Hmm, I couldn’t reach the trainer right now. Try again in a moment.";
+    }
+
+    const data = await response.json();
+
+    // Step 3: Extract reply
+    return data.reply || "The trainer didn’t respond. Let’s try again!";
   } catch (error) {
-    console.error("Error calling AI trainer flow:", error);
+    console.error("Error calling getAITrainerReply:", error);
     return "I'm having a bit of trouble connecting right now. Please try again in a moment.";
   }
 }
