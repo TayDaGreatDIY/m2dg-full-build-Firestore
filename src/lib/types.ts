@@ -152,3 +152,13 @@ export type AdminLog = {
     performedBy: string;
     timestamp: Timestamp;
 };
+
+export type AITrainerAnalytics = {
+    lastEmotion: string;
+    lastUpdated: Timestamp;
+    hypeCount?: number;
+    calmCount?: number;
+    focusedCount?: number;
+    encouragingCount?: number;
+    neutralCount?: number;
+};
