@@ -88,7 +88,7 @@ export default function CourtDetailPage() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
 
-  const CHECK_IN_RADIUS_METERS = 160; // ~0.1 miles
+  const CHECK_IN_RADIUS_METERS = 400; // ~0.25 miles
 
   /* --------------------------
      Court data
@@ -174,7 +174,7 @@ export default function CourtDetailPage() {
       toast({
         variant: "destructive",
         title: "Too Far to Check In",
-        description: "You must be within 160 meters of the court.",
+        description: `You must be within ${CHECK_IN_RADIUS_METERS} meters of the court.`,
       });
       return;
     }
