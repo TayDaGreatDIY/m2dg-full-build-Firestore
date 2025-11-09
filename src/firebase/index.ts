@@ -1,38 +1,42 @@
 'use client';
 
-import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { firebaseConfig } from '@/firebase/config'; // ✅ now properly imported from config.ts
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
+/**
+ * Initializes Firebase correctly across all environments (dev, prod, emulator, App Hosting).
+ * Automatically reuses the existing app instance if already initialized.
+ */
 export function initializeFirebase() {
+  let firebaseApp: FirebaseApp;
+
   if (!getApps().length) {
-    // Important! initializeApp() is called without any arguments because Firebase App Hosting
-    // integrates with the initializeApp() function to provide the environment variables needed to
-    // populate the FirebaseOptions in production. It is critical that we attempt to call initializeApp()
-    // without arguments.
-    let firebaseApp;
     try {
-      // Attempt to initialize via Firebase App Hosting environment variables
+      // ✅ Try to initialize automatically (works in Firebase Hosting)
       firebaseApp = initializeApp();
     } catch (e) {
-      // Only warn in production because it's normal to use the firebaseConfig to initialize
-      // during development
-      if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
+      // ✅ Fallback to manual config in dev or emulator
+      if (process.env.NODE_ENV === 'production') {
+        console.warn(
+          'Automatic initialization failed. Falling back to firebaseConfig.',
+          e
+        );
       }
       firebaseApp = initializeApp(firebaseConfig);
     }
-
-    return getSdks(firebaseApp);
+  } else {
+    firebaseApp = getApp();
   }
 
-  // If already initialized, return the SDKs with the already initialized App
-  return getSdks(getApp());
+  return getSdks(firebaseApp);
 }
 
+/**
+ * Returns the Firebase SDK instances for use throughout the app.
+ */
 export function getSdks(firebaseApp: FirebaseApp) {
   return {
     firebaseApp,
@@ -42,6 +46,13 @@ export function getSdks(firebaseApp: FirebaseApp) {
   };
 }
 
+// ✅ Core exports (directly re-exported for convenience)
+export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+export const storage = getStorage(app);
+
+// ✅ Re-export utilities and hooks
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';

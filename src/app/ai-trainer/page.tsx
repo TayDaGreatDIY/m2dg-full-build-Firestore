@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { getTrainerReply } from '@/ai/trainerModel';
 import { DesktopHeader } from '@/components/ui/TopNav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send, Bot, User, Loader2 } from 'lucide-react';
+import { Send, Bot, Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { useUser } from '@/firebase';
@@ -26,9 +25,7 @@ export default function AiTrainerPage() {
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
       const viewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
-      if (viewport) {
-        viewport.scrollTop = viewport.scrollHeight;
-      }
+      if (viewport) viewport.scrollTop = viewport.scrollHeight;
     }
   };
 
@@ -46,32 +43,33 @@ export default function AiTrainerPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('https://getaitrainerreply-qhmdrry7ca-uc.a.run.app', {
+      // 🔥 Force local emulator URL for testing
+      const baseUrl = 'http://127.0.0.1:5001/m2dg-full-build/us-central1/getAiTrainerReply';
+
+      const response = await fetch(baseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userMessage.content }),
       });
-      
+
       if (!response.ok) {
-        throw new Error('Failed to get response from AI trainer.');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
       const assistantMessage: Message = { role: 'assistant', content: data.reply };
       setMessages((prev) => [...prev, assistantMessage]);
-
     } catch (error) {
-      console.error(error);
+      console.error('Fetch error:', error);
       const errorMessage: Message = {
         role: 'assistant',
-        content: 'Sorry, I am having trouble connecting. Please try again later.',
+        content: '⚠️ I’m having trouble connecting right now. Please make sure the Firebase emulator is running.',
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
-
 
   return (
     <div className="flex flex-col h-full">
@@ -84,14 +82,19 @@ export default function AiTrainerPage() {
                 <Bot className="mx-auto h-12 w-12 text-orange" />
                 <h2 className="mt-4 text-xl font-bold font-headline">Your Personal AI Coach</h2>
                 <p className="mt-2 text-sm text-white/60">
-                  Ready to take your game to the next level? Ask me anything from creating a workout plan to analyzing your last game.
+                  Ready to take your game to the next level? Ask me anything from creating a workout plan
+                  to analyzing your last game.
                 </p>
               </div>
             )}
+
             {messages.map((m, index) => (
               <div
                 key={index}
-                className={cn('flex items-start gap-4', m.role === 'user' ? 'justify-end' : 'justify-start')}
+                className={cn(
+                  'flex items-start gap-4',
+                  m.role === 'user' ? 'justify-end' : 'justify-start'
+                )}
               >
                 {m.role !== 'user' && (
                   <div className="p-2 bg-orange rounded-full">
@@ -109,10 +112,15 @@ export default function AiTrainerPage() {
                   <p className="whitespace-pre-wrap">{m.content}</p>
                 </div>
                 {m.role === 'user' && (
-                  <UserAvatar src={authUser?.photoURL || ''} name={authUser?.displayName || ''} size={40} />
+                  <UserAvatar
+                    src={authUser?.photoURL || ''}
+                    name={authUser?.displayName || ''}
+                    size={40}
+                  />
                 )}
               </div>
             ))}
+
             {isLoading && (
               <div className="flex items-start gap-4">
                 <div className="p-2 bg-orange rounded-full">

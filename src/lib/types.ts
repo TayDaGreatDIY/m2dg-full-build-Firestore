@@ -8,7 +8,7 @@ export type Badge = {
   name: string;
   icon: string;
   dateEarned: Timestamp;
-}
+};
 
 export type MatchHistory = {
   id: string;
@@ -16,14 +16,14 @@ export type MatchHistory = {
   opponent: string;
   result: 'W' | 'L';
   score: string;
-}
+};
 
 export type User = {
   uid: string;
   displayName: string;
   username: string;
   email?: string;
-  avatarURL: string; 
+  avatarURL: string;
   aboutMe?: string;
   role?: UserRole;
   status?: 'active' | 'suspended';
@@ -36,6 +36,7 @@ export type User = {
   createdAt?: Timestamp;
   lastCheckIn?: Timestamp;
   badges?: Badge[];
+  rank?: number;
 };
 
 export type UserWithId = User & { id: string; };
@@ -52,7 +53,7 @@ export type TrainingLog = {
 };
 
 export type Chat = {
-  id:string;
+  id: string;
   memberIds: string[];
   lastMessage: string;
   lastTimestamp: Timestamp;
@@ -70,24 +71,24 @@ export type Message = {
 };
 
 export type Notification = {
-    id: string;
-    userId: string; 
-    fromId: string;
-    fromName: string;
-    type: 'new_message';
-    link: string; 
-    read: boolean;
-    createdAt: Timestamp;
-}
+  id: string;
+  userId: string;
+  fromId: string;
+  fromName: string;
+  type: 'new_message';
+  link: string;
+  read: boolean;
+  createdAt: Timestamp;
+};
 
 export type AdminNotification = {
-    id: string;
-    type: 'court_submission' | 'challenge_submission' | 'report';
-    message: string;
-    createdAt: Timestamp;
-    read: boolean;
-    link?: string;
-}
+  id: string;
+  type: 'court_submission' | 'challenge_submission' | 'report';
+  message: string;
+  createdAt: Timestamp;
+  read: boolean;
+  link?: string;
+};
 
 export type Court = {
   id: string;
@@ -110,7 +111,7 @@ export type Challenge = {
   rewardXP: number;
   approved: boolean;
   featured: boolean;
-  createdBy: string; 
+  createdBy: string;
   createdAt?: Timestamp;
 };
 
@@ -126,37 +127,36 @@ export type Competition = {
   participants: string[];
   status?: 'Pending' | 'Approved' | 'Completed';
   city?: string;
-}
+};
 
 export type AdminLog = {
-    id: string;
-    action: string;
-    targetType: string;
-    targetId: string;
-    performedBy: string;
-    timestamp: Timestamp;
-}
-
+  id: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  performedBy: string;
+  timestamp: Timestamp;
+};
 
 export type CheckIn = {
-    id: string;
-    userId: string;
-    timestamp: Timestamp;
-    user: {
-        uid: string;
-        displayName: string;
-        avatarURL?: string;
-    }
-}
+  id: string;
+  userId: string;
+  timestamp: Timestamp;
+  user: {
+    uid: string;
+    displayName: string;
+    avatarURL?: string;
+  };
+};
 
 export type Run = {
-    id: string;
-    hostUid: string;
-    hostName: string;
-    time: string;
-    note: string;
-    createdAt: Timestamp;
-}
+  id: string;
+  hostUid: string;
+  hostName: string;
+  time: string;
+  note: string;
+  createdAt: Timestamp;
+};
 
 export type Video = {
   id: string;
@@ -171,7 +171,7 @@ export type Video = {
 export type FeedPost = {
   id: string;
   user: string;
-  userId: string; 
+  userId: string;
   avatar: string;
   text: string;
   court: string;
@@ -206,5 +206,3 @@ export type ChatMessage = {
   text: string;
   timestamp: string;
 };
-
-    

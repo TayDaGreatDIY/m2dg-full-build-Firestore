@@ -42,57 +42,62 @@ exports.helloWorld = onRequest((req, res) => {
 });
 
 /* --------------------------- M2DG AI Trainer API ------------------------- */
-exports.getAiTrainerReply = onRequest({ cors: true, secrets: [OPENAI_API_KEY] }, async (req, res) => {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Only POST requests are accepted" });
-  }
-
-  if (!openai) {
-    return res.status(503).json({
-      error: "AI is not configured. Contact support.",
-    });
-  }
-
-  try {
-    // Support both single message string and array of messages
-    let { message, messages } = req.body;
-    if (!messages && message) {
-      messages = [{ role: "user", content: message }];
+exports.getAiTrainerReply = onRequest(
+  {
+    cors: ["http://localhost:3000", "https://m2dg-full-build.web.app"],
+    secrets: [OPENAI_API_KEY],
+  },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Only POST requests are accepted" });
     }
 
-    if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({
-        error: "Request body must contain { message: 'text' } or { messages: [...] }",
+    if (!openai) {
+      return res.status(503).json({
+        error: "AI is not configured. Contact support.",
       });
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.75,
-      messages: [
-        {
-          role: "system",
-          content: `You are "Coach GPT", the official AI trainer for the Married 2 Da Game (M2DG) basketball platform. 
-You help players improve their game, fitness, and mindset through motivational guidance and performance coaching. 
+    try {
+      let { message, messages } = req.body;
+      if (!messages && message) {
+        messages = [{ role: "user", content: message }];
+      }
+
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({
+          error: "Request body must contain { message: 'text' } or { messages: [...] }",
+        });
+      }
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.75,
+        messages: [
+          {
+            role: "system",
+            content: `You are "Coach GPT", the official AI trainer for the Married 2 Da Game (M2DG) basketball platform.
+You help players improve their game, fitness, and mindset through motivational guidance and performance coaching.
 Always speak in a supportive, realistic tone, with personality — part trainer, part mentor.`,
-        },
-        ...messages,
-      ],
-    });
+          },
+          ...messages,
+        ],
+      });
 
-    const reply =
-      completion.choices?.[0]?.message?.content ||
-      "I'm here, ready to plan your next session. Tell me what skill or workout you want to focus on.";
+      const reply =
+        completion.choices?.[0]?.message?.content ||
+        "I'm here, ready to plan your next session. Tell me what skill or workout you want to focus on.";
 
-    logger.info("✅ AI Trainer replied:", reply.slice(0, 80));
-    res.status(200).json({ reply });
-  } catch (err) {
-    logger.error("❌ getAiTrainerReply error:", err);
-    res.status(500).json({
-      error: "Trainer is unavailable right now. Try again soon.",
-    });
+      logger.info("✅ AI Trainer replied:", reply.slice(0, 80));
+      res.status(200).json({ reply });
+    } catch (err) {
+      logger.error("❌ getAiTrainerReply error:", err);
+      res.status(500).json({
+        error: "Trainer is unavailable right now. Try again soon.",
+      });
+    }
   }
-});
+);
 
 /* ----------------- Backfill Court Coordinates (Callable) ----------------- */
 exports.backfillCourtCoordinates = onCall(async (_data, context) => {
