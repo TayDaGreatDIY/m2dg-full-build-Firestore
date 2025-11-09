@@ -1,3 +1,4 @@
+
 /**
  * Firebase Functions (Node 18+ / v2 APIs)
  */
@@ -40,6 +41,127 @@ exports.helloWorld = onRequest((req, res) => {
   logger.info("✅ helloWorld ping");
   res.json({ ok: true, message: "Firebase Functions are live." });
 });
+
+
+/* --------------------------- M2DG Check-in API ------------------------- */
+// Haversine formula to calculate distance
+function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // Earth radius in meters
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+        Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+exports.checkin = onRequest(
+  {
+    cors: ["http://localhost:3000", "https://m2dg-full-build.web.app"],
+  },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Only POST requests are accepted" });
+    }
+
+    const { userId, courtId, samples } = req.body;
+
+    if (!userId || !courtId || !Array.isArray(samples) || samples.length < 3) {
+      return res.status(400).json({ error: "Invalid payload. Required: userId, courtId, and at least 3 samples." });
+    }
+
+    try {
+      const db = admin.firestore();
+      
+      // 1. Fetch Court and User data
+      const courtRef = db.collection("courts").doc(courtId);
+      const userRef = db.collection("users").doc(userId);
+      
+      const [courtDoc, userDoc] = await Promise.all([courtRef.get(), userRef.get()]);
+
+      if (!courtDoc.exists) {
+        return res.status(404).json({ error: "Court not found." });
+      }
+      if (!userDoc.exists) {
+        return res.status(404).json({ error: "User not found." });
+      }
+
+      const court = courtDoc.data();
+      const user = userDoc.data();
+      const checkinRadius = (court.radius || 400) + 100; // Server-side radius
+
+      // 2. Server-side validation
+      let validSampleFound = false;
+      for (const sample of samples) {
+          const distance = getDistanceFromLatLonInMeters(
+              sample.latitude,
+              sample.longitude,
+              court.latitude,
+              court.longitude
+          );
+
+          if (distance <= checkinRadius && sample.accuracy <= 200) {
+              validSampleFound = true;
+              break; 
+          }
+      }
+
+      if (!validSampleFound) {
+        logger.warn(`Check-in REJECTED for user ${userId} at court ${courtId}. Reason: No valid samples within radius/accuracy constraints.`);
+        return res.status(403).json({ error: "Location validation failed. Please get closer to the court." });
+      }
+      
+      // 3. Cooldown check
+      if (user.lastCheckIn) {
+        const now = new Date();
+        const last = user.lastCheckIn.toDate();
+        const diffHours = (now.getTime() - last.getTime()) / (1000 * 60 * 60);
+        if (diffHours < 2) {
+          logger.warn(`Check-in REJECTED for user ${userId} at court ${courtId}. Reason: Cooldown active.`);
+          return res.status(429).json({ error: "Cooldown active. You can only check in once every 2 hours." });
+        }
+      }
+
+      // 4. Update Firestore
+      const batch = db.batch();
+      
+      // Update user document
+      batch.update(userRef, {
+        xp: admin.firestore.FieldValue.increment(25),
+        lastCheckIn: admin.firestore.FieldValue.serverTimestamp(),
+        currentCourtId: courtId,
+      });
+
+      // Create a check-in record
+      const checkinRef = db.collection("courts").doc(courtId).collection("checkins").doc(userId);
+      batch.set(checkinRef, {
+        userId: userId,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        user: {
+            uid: userId,
+            displayName: user.displayName,
+            avatarURL: user.avatarURL,
+        }
+      });
+      
+      await batch.commit();
+
+      logger.info(`✅ Check-in SUCCESS for user ${userId} at court ${courtId}. Awarded 25 XP.`);
+      res.status(200).json({ success: true, message: "Check-in successful!" });
+
+    } catch (err) {
+      logger.error("❌ Check-in Function Error:", err);
+      res.status(500).json({
+        error: "An internal server error occurred during check-in.",
+      });
+    }
+  }
+);
+
 
 /* --------------------------- M2DG AI Trainer API ------------------------- */
 exports.getAiTrainerReply = onRequest(
@@ -174,3 +296,5 @@ exports.backfillCourtCoordinates = onCall(async (_data, context) => {
   logger.info(`✅ Backfill complete. ${updates.length} processed.`);
   return { status: "Complete", updates };
 });
+
+    
