@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
@@ -27,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import UserAvatar from "@/components/ui/UserAvatar";
 import HostRunDialog from "@/components/courts/HostRunDialog";
+import CheckInVerificationModal from "@/components/courts/CheckInVerificationModal";
 import type { Court, CheckIn, Run, User } from "@/lib/types";
 import {
   MapPin,
@@ -81,6 +83,7 @@ export default function CourtDetailPage() {
   const isMobile = useIsMobile();
 
   const [isHostRunOpen, setIsHostRunOpen] = useState(false);
+  const [isVerificationOpen, setIsVerificationOpen] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
@@ -192,6 +195,26 @@ export default function CourtDetailPage() {
       return;
     }
 
+    // Instead of direct check-in, open the verification modal
+    setIsVerificationOpen(true);
+    // In a real implementation, you would trigger the backend to send a code here.
+    toast({ title: "Verification Required", description: "A code has been sent to your email." });
+  };
+  
+  const handleVerifyAndCheckIn = async (code: string) => {
+    if (!currentUser || !courtId || !firestore || !court) return;
+
+    // --- Placeholder Logic ---
+    // In a real app, you would call a Cloud Function here to verify the code.
+    // For now, we'll simulate a successful verification if the code is '123456'.
+    const isCodeValid = code === '123456';
+    
+    if (!isCodeValid) {
+        toast({ variant: 'destructive', title: 'Invalid Code', description: 'The verification code is incorrect. Please try again.' });
+        return;
+    }
+    // --- End Placeholder Logic ---
+
     const checkinRef = doc(
       firestore,
       "courts",
@@ -224,7 +247,8 @@ export default function CourtDetailPage() {
       });
 
       await handleCheckInXPAndStreak(firestore, userProfile);
-
+      
+      setIsVerificationOpen(false); // Close modal on success
       toast({
         title: "You're checked in!",
         description: `+25 XP! You are now checked in at ${court?.name}.`,
@@ -234,6 +258,7 @@ export default function CourtDetailPage() {
       toast({ variant: "destructive", title: "Check-in failed" });
     }
   };
+
 
   /* --------------------------
      Handle Check-Out
@@ -347,6 +372,12 @@ export default function CourtDetailPage() {
         onOpenChange={setIsHostRunOpen}
         courtId={courtId}
         courtName={court.name}
+      />
+      <CheckInVerificationModal
+        isOpen={isVerificationOpen}
+        onOpenChange={setIsVerificationOpen}
+        onVerify={handleVerifyAndCheckIn}
+        userEmail={currentUser?.email || ''}
       />
       <div className="flex flex-col min-h-screen bg-background">
         <header className="flex items-center gap-4 p-3 border-b border-white/10 bg-background sticky top-0 z-20">
@@ -487,3 +518,4 @@ export default function CourtDetailPage() {
     </>
   );
 }
+
