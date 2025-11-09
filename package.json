@@ -56,12 +56,14 @@
     "recharts": "^2.15.1",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
+    "wav": "^1.0.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18.3.4",
     "@types/react-dom": "^18.3.0",
+    "@types/wav": "^1.0.2",
     "firebase-frameworks": "^0.11.8",
     "firebase-tools": "^14.24.1",
     "genkit-cli": "^1.20.0",
