@@ -1,44 +1,38 @@
-// src/firebase/firestore/use-collection.tsx
+"use client";
 import { useEffect, useMemo, useState } from "react";
-import type {
-  CollectionReference,
-  DocumentData,
-  FirestoreError,
-  Query,
-  QuerySnapshot,
-} from "firebase/firestore";
-import { onSnapshot } from "firebase/firestore";
+import { onSnapshot, Query, CollectionReference, DocumentData, FirestoreError } from "firebase/firestore";
 
-export type WithId<T> = T & { id: string };
+type DataWithId<T> = T & { id: string };
+type DataArray<T> = DataWithId<T>[];
 
-type TargetRef<T> = Query<T> | CollectionReference<T> | null | undefined;
-
-export function useCollection<T = DocumentData>(targetRef: TargetRef<T>) {
-  // If the caller passes null because prerequisites (user, db, params) aren’t ready,
-  // we short-circuit to a stable, typed empty result.
-  const [data, setData] = useState<WithId<T>[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(!!targetRef);
+export function useCollection<T = DocumentData>(
+  targetRefOrQuery: Query<DocumentData> | CollectionReference<DocumentData> | null | undefined
+) {
+  const [data, setData] = useState<DataArray<T>>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | null>(null);
 
-  // Memo guard so dependency doesn’t thrash
-  const ref = useMemo(() => targetRef ?? null, [targetRef]);
+  const disabled = useMemo(() => targetRefOrQuery == null, [targetRefOrQuery]);
 
   useEffect(() => {
-    if (!ref) {
+    if (disabled) {
+      setData([]);
       setIsLoading(false);
       setError(null);
-      setData([]);
       return;
     }
 
     setIsLoading(true);
     setError(null);
 
-    const unsub = onSnapshot(
-      ref,
-      (snap: QuerySnapshot<T>) => {
-        const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as T) }));
-        setData(rows);
+    const unsubscribe = onSnapshot(
+      targetRefOrQuery as Query<DocumentData>,
+      (snapshot) => {
+        const rows = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...(doc.data() as T),
+        }));
+        setData(rows as DataArray<T>);
         setIsLoading(false);
       },
       (err: FirestoreError) => {
@@ -47,8 +41,8 @@ export function useCollection<T = DocumentData>(targetRef: TargetRef<T>) {
       }
     );
 
-    return () => unsub();
-  }, [ref]);
+    return () => unsubscribe();
+  }, [disabled, targetRefOrQuery]);
 
   return { data, isLoading, error };
 }
