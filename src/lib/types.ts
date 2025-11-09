@@ -1,3 +1,4 @@
+
 import { Timestamp } from "firebase/firestore";
 
 export type User = {
@@ -16,6 +17,8 @@ export type User = {
     city: string;
     createdAt: Timestamp;
     lastCheckIn?: Timestamp;
+    lastCheckInTime?: string; // ISO String for cooldown
+    currentCourtId?: string;
     aboutMe?: string;
     badges?: { id: string; name: string }[];
 };
