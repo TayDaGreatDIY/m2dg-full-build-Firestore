@@ -112,3 +112,5 @@ export default function CheckInVerificationModal({ isOpen, onOpenChange, onVerif
     </Dialog>
   );
 }
+
+    
