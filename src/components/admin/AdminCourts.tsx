@@ -113,7 +113,7 @@ export default function AdminCourts() {
                   <TableCell className="text-right space-x-2">
                     <CourtFormDialog
                         court={court}
-                        trigger={<Button variant="outline" size="icon"><Edit size={16} /></Button>}
+                        trigger={<Button variant="outline" size="icon" aria-label="Edit Court"><Edit size={16} /></Button>}
                         onFormSubmit={(action, courtId) => logAdminAction(firestore, adminUser, action, 'court', courtId)}
                     />
                     <DeleteCourtDialog courtId={court.id} courtName={court.name} 
@@ -283,7 +283,7 @@ function DeleteCourtDialog({ courtId, courtName, onDelete }: { courtId: string; 
     return (
         <AlertDialog>
             <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="icon"><Trash2 size={16} /></Button>
+                <Button variant="destructive" size="icon" aria-label="Delete Court"><Trash2 size={16} /></Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
                 <AlertDialogHeader>

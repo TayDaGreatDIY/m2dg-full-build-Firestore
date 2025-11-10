@@ -234,7 +234,7 @@ export default function AiTrainerPage() {
               className="flex-1"
               autoComplete="off"
             />
-            <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+            <Button type="submit" size="icon" disabled={isLoading || !input.trim()} aria-label="Send Message">
               <Send />
             </Button>
           </form>

@@ -108,7 +108,7 @@ export default function AdminChallenges() {
                   <TableCell className="text-right space-x-2">
                     <ChallengeFormDialog
                         challenge={challenge}
-                        trigger={<Button variant="outline" size="icon"><Edit size={16} /></Button>}
+                        trigger={<Button variant="outline" size="icon" aria-label="Edit Challenge"><Edit size={16} /></Button>}
                         onFormSubmit={(action, id) => logAdminAction(firestore, adminUser, action, 'challenge', id)}
                     />
                     <DeleteChallengeDialog challengeId={challenge.id} challengeTitle={challenge.title} 
@@ -234,7 +234,7 @@ function DeleteChallengeDialog({ challengeId, challengeTitle, onDelete }: { chal
     return (
         <AlertDialog>
             <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="icon"><Trash2 size={16} /></Button>
+                <Button variant="destructive" size="icon" aria-label="Delete Challenge"><Trash2 size={16} /></Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
                 <AlertDialogHeader>

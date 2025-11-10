@@ -117,7 +117,7 @@ export default function AdminCompetitions() {
                   <TableCell className="text-right space-x-2">
                     <CompetitionFormDialog
                         competition={comp}
-                        trigger={<Button variant="outline" size="icon"><Edit size={16} /></Button>}
+                        trigger={<Button variant="outline" size="icon" aria-label="Edit Competition"><Edit size={16} /></Button>}
                         onFormSubmit={(action, id) => logAdminAction(firestore, adminUser, action, 'competition', id)}
                     />
                     <DeleteCompetitionDialog competitionId={comp.id} competitionTitle={comp.title} 
@@ -295,7 +295,7 @@ function DeleteCompetitionDialog({ competitionId, competitionTitle, onDelete }: 
     return (
         <AlertDialog>
             <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="icon"><Trash2 size={16} /></Button>
+                <Button variant="destructive" size="icon" aria-label="Delete Competition"><Trash2 size={16} /></Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
                 <AlertDialogHeader>
