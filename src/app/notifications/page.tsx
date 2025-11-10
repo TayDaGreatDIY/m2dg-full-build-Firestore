@@ -1,15 +1,17 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy, writeBatch, doc } from "firebase/firestore";
-import type { Notification } from "@/lib/types";
+import { collection, query, orderBy, writeBatch, doc, updateDoc } from "firebase/firestore";
+import type { Notification, User } from "@/lib/types";
 import { DesktopHeader } from "@/components/ui/TopNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MessageSquare, BellOff } from "lucide-react";
+import { MessageSquare, BellOff, CheckCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 export default function NotificationsPage() {
   const { user, isUserLoading } = useUser();
@@ -26,7 +28,7 @@ export default function NotificationsPage() {
 
   const { data: notifications, isLoading } = useCollection<Notification>(notificationsQuery);
 
-  // Mark notifications as read when the page is visited
+  // Automatically mark notifications as read when the page is viewed
   useEffect(() => {
     if (user && firestore && notifications && notifications.length > 0) {
       const unread = notifications.filter(n => !n.read);
@@ -41,9 +43,24 @@ export default function NotificationsPage() {
     }
   }, [notifications, user, firestore]);
   
-  const handleNotificationClick = (link: string) => {
-      router.push(link);
+  const handleNotificationClick = async (notification: Notification) => {
+      if (!notification.read) {
+          const notifRef = doc(firestore, "users", user!.uid, "notifications", notification.id);
+          await updateDoc(notifRef, { read: true });
+      }
+      router.push(notification.link);
   }
+  
+  const markAllAsRead = async () => {
+    if (user && firestore && notifications && notifications.length > 0) {
+      const batch = writeBatch(firestore);
+      notifications.forEach(notification => {
+        const notifRef = doc(firestore, "users", user.uid, "notifications", notification.id);
+        batch.update(notifRef, { read: true });
+      });
+      await batch.commit();
+    }
+  };
 
   const pageLoading = isUserLoading || isLoading;
 
@@ -52,6 +69,12 @@ export default function NotificationsPage() {
       <DesktopHeader pageTitle="Notifications" />
       <main className="flex-1 w-full p-4 pb-24 space-y-6 md:p-6">
         <div className="max-w-md mx-auto space-y-4">
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={markAllAsRead}>
+              <CheckCircle size={16} className="mr-1"/>
+              Mark All as Read
+            </Button>
+          </div>
           {pageLoading ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
@@ -60,20 +83,25 @@ export default function NotificationsPage() {
             notifications.map((notif) => (
               <div
                 key={notif.id}
-                onClick={() => handleNotificationClick(notif.link)}
-                className={`bg-card rounded-card border border-white/10 p-4 flex items-start gap-4 cursor-pointer transition-colors hover:bg-white/5 ${!notif.read ? 'border-orange/50' : 'opacity-70'}`}
+                onClick={() => handleNotificationClick(notif)}
+                className={cn(
+                    "bg-card rounded-card border border-white/10 p-4 flex items-start gap-4 cursor-pointer transition-colors hover:bg-white/5",
+                    !notif.read && "border-orange/50 bg-orange/5"
+                )}
               >
                 <div className="mt-1">
                    <MessageSquare className="w-5 h-5 text-orange" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm text-white/90">
-                    New message from <span className="font-bold">@{notif.fromName}</span>
+                  <p className="font-bold text-white/95">{notif.title || "New Notification"}</p>
+                  <p className="text-sm text-white/70">
+                    {notif.body || 'You have a new update.'}
                   </p>
-                  <p className="text-xs text-white/50">
+                  <p className="text-xs text-white/50 mt-1">
                     {notif.createdAt ? formatDistanceToNow(notif.createdAt.toDate(), { addSuffix: true }) : ''}
                   </p>
                 </div>
+                 {!notif.read && <div className="w-2.5 h-2.5 rounded-full bg-orange mt-2" />}
               </div>
             ))
           ) : (

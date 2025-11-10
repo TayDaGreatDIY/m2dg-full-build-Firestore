@@ -62,3 +62,50 @@ exports.onMissionComplete = functions.firestore
       });
     });
   });
+
+exports.onMissionCreated = functions.firestore
+    .document("users/{uid}/goals/{goalId}/missions/{missionId}")
+    .onCreate(async (snap, context) => {
+        const { uid, goalId, missionId } = context.params;
+        const mission = snap.data();
+        if (!mission) return;
+
+        const notification = {
+            title: "New Mission Added 🎯",
+            body: `Coach M2DG just assigned: ${mission.title || "a new goal"}`,
+            type: "mission",
+            read: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            link: `/missions`,
+            meta: { goalId, missionId },
+        };
+
+        await db.collection("users").doc(uid).collection("notifications").add(notification);
+    });
+
+exports.onMilestoneXP = functions.firestore
+    .document("users/{uid}/counters/main")
+    .onUpdate(async (change, context) => {
+        const before = change.before.data() || {};
+        const after = change.after.data() || {};
+        const prevXP = typeof before.xp === "number" ? before.xp : 0;
+        const nextXP = typeof after.xp === "number" ? after.xp : 0;
+
+        const prevMilestone = Math.floor(prevXP / 100);
+        const nextMilestone = Math.floor(nextXP / 100);
+
+        if (nextMilestone <= prevMilestone) return;
+
+        const { uid } = context.params;
+        const notification = {
+            title: "XP Milestone 💥",
+            body: `You just hit ${nextMilestone * 100} XP. Keep pushing!`,
+            type: "xp",
+            read: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            link: `/player/${uid}`,
+            meta: { xp: nextXP },
+        };
+
+        await db.collection("users").doc(uid).collection("notifications").add(notification);
+    });

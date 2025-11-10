@@ -5,10 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Newspaper, Map, Trophy, MessageSquare, ShieldCheck, Bell, ShoppingBag, BrainCircuit, Bot, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useUser, useCollection, useMemoFirebase, useFirestore } from "@/firebase";
-import type { Notification } from "@/lib/types";
-import { collection, query, where } from "firebase/firestore";
-
+import { useUserNotificationsCount } from "@/hooks/useUserNotifications";
 
 const navItems = [
   { href: "/dashboard", icon: Home, label: "Home" },
@@ -20,30 +17,12 @@ const navItems = [
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const unreadCount = useUserNotificationsCount();
 
-  const notificationsQuery = useMemoFirebase(() => {
-      if (!user || !firestore) return null;
-      return query(
-          collection(firestore, "users", user.uid, "notifications"),
-          where("read", "==", false)
-      );
-  }, [user, firestore]);
-
-  const { data: notifications } = useCollection<Notification>(notificationsQuery);
-  const unreadCount = notifications?.length || 0;
-
-
-  // Don't render nav on login page or while loading if no user is determined yet
-  if (pathname === '/login' || (isUserLoading && !user)) {
+  if (pathname === '/login' || pathname.startsWith('/messages/') || pathname.startsWith('/admin')) {
       return null;
   }
 
-  // Also don't render on individual chat pages
-  if (pathname.startsWith('/messages/')) {
-    return null;
-  }
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 h-[calc(60px+env(safe-area-inset-bottom))] bg-[var(--color-bg-card)] border-t border-white/10 md:hidden">
