@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
+import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -200,6 +202,12 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
+            <VisuallyHidden asChild>
+              <DialogTitle id="nav-panel-title">Main Navigation</DialogTitle>
+            </VisuallyHidden>
+            <VisuallyHidden asChild>
+              <DialogDescription id="nav-panel-desc">App sidebar with links to core sections</DialogDescription>
+            </VisuallyHidden>
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
         </Sheet>
@@ -777,3 +785,5 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+    
