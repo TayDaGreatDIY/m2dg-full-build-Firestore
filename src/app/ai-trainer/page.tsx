@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { DesktopHeader } from '@/components/ui/TopNav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send, Bot, Loader2, Mic, Speaker, Play, Pause } from 'lucide-react';
+import { Send, Bot, Loader2, Mic, Speaker } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { useUser, useFirestore } from '@/firebase';
@@ -234,8 +234,8 @@ export default function AiTrainerPage() {
     setIsLoading(true);
 
     try {
-      const history = messages.slice(-10); // Pass last 10 messages for context
-      const { reply, audioUrl, emotion } = await aiTrainerFlow({ prompt: currentInput, history, voice: autoPlay });
+      const plainHistory = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
+      const { reply, audioUrl, emotion } = await aiTrainerFlow({ prompt: currentInput, history: plainHistory, voice: autoPlay });
       
       const assistantMessage: Message = { role: 'assistant', content: reply, emotion };
       setMessages(prev => [...prev, assistantMessage]);
