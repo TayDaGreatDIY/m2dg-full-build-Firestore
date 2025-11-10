@@ -2,6 +2,7 @@
 "use client"
 
 import * as React from "react"
+import Link from 'next/link';
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
@@ -550,29 +551,39 @@ const SidebarMenuButton = React.forwardRef<
   ) => {
     const Comp = asChild ? Slot : "button"
     const { isMobile, state } = useSidebar()
-    const router = (href) ? require('next/navigation').useRouter() : null;
+    
+    const buttonContent = (
+      <>
+        {left}
+        {children}
+      </>
+    );
 
     const button = (
       <Comp
-        ref={ref}
+        ref={ref as any}
         data-sidebar="menu-button"
         data-size={size}
         data-active={isActive}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-        onClick={() => router?.push(href || '')}
         {...props}
       >
-        {left}
-        {children}
+        {buttonContent}
       </Comp>
-    )
+    );
+
+    if (href) {
+      <Link href={href} passHref legacyBehavior>
+        {button}
+      </Link>
+    }
 
     if (!tooltip && !children) {
       tooltip = { children: left };
     }
 
     if (!tooltip) {
-      return button
+      return href ? <Link href={href} passHref legacyBehavior><a>{button}</a></Link> : button;
     }
 
 
@@ -582,9 +593,11 @@ const SidebarMenuButton = React.forwardRef<
       }
     }
 
+    const trigger = href ? <Link href={href} passHref legacyBehavior><a>{button}</a></Link> : button;
+
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{button}</TooltipTrigger>
+        <TooltipTrigger asChild>{trigger}</TooltipTrigger>
         <TooltipContent
           side="right"
           align="center"
