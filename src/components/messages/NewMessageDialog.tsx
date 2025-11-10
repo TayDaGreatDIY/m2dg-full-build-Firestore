@@ -6,13 +6,13 @@ import { useRouter } from "next/navigation";
 import { useUser, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, where, getDocs, addDoc, serverTimestamp, limit } from "firebase/firestore";
 import type { User as AppUser } from "@/lib/types";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, VisuallyHidden } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import UserAvatar from "@/components/ui/UserAvatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+
 
 type NewMessageDialogProps = {
   isOpen: boolean;

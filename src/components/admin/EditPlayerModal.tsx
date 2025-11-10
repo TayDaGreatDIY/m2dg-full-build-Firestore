@@ -18,6 +18,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  VisuallyHidden,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -35,7 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+
 import type { UserWithId } from "@/lib/types";
 
 // ---------------- Schema ----------------
