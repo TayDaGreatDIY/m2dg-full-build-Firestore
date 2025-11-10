@@ -1,99 +1,101 @@
 
 'use server';
-/**
- * @fileOverview Generates weekly basketball missions for a user based on their goals.
- */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { addDoc, collection, serverTimestamp, getDocs, query, where, writeBatch, doc } from 'firebase/firestore';
-import { firestore } from '@/firebase'; // Assuming you have a central firebase export
 import { googleAI } from '@genkit-ai/google-genai';
+import * as admin from 'firebase-admin';
 
-// 1. Define Input Schema
-const MissionsInputSchema = z.object({
-  userId: z.string().describe('The ID of the user requesting missions.'),
-  playerInput: z.string().describe("The user's stated goal, e.g., 'I want to improve my three-point shooting.'"),
-});
-export type MissionsInput = z.infer<typeof MissionsInputSchema>;
+if (!admin.apps.length) admin.initializeApp();
+const db = admin.firestore();
 
-// 2. Define AI Output Schema (for a single mission)
-const MissionSchema = z.object({
-    title: z.string().describe("A short, actionable title for the mission. e.g., 'Make 50 Free Throws'"),
-    description: z.string().describe("A one-sentence description of the mission."),
-    xpValue: z.number().describe("The XP value of completing the mission, from 10 to 50."),
-});
-
-const MissionsOutputSchema = z.object({
-  goalTitle: z.string().describe("A short, motivational title for the overall weekly goal. e.g., 'Sharpshooter's Challenge'"),
-  missions: z.array(MissionSchema).length(3).describe('An array of exactly 3 missions for the week.'),
-});
-export type MissionsOutput = z.infer<typeof MissionsOutputSchema>;
-
-// 3. Define the Prompt
-const generateMissionsPrompt = ai.definePrompt({
-    name: 'generateMissionsPrompt',
-    input: { schema: z.object({ playerInput: z.string() }) },
-    output: { schema: MissionsOutputSchema },
-    prompt: `You are Coach M2DG, an elite basketball trainer. A player has a new goal.
-    Based on their goal: "{{playerInput}}", create a motivational weekly goal title and generate exactly 3 distinct, actionable basketball training missions they can complete.
-    Each mission should have a clear title, a short description, and an appropriate XP value between 10 and 50 based on its difficulty.
-    Return the response in the specified JSON format.
-    `,
-    config: {
-        temperature: 0.8,
-    }
+const Input = z.object({
+  userId: z.string(),
+  goal: z.object({
+    title: z.string(),
+    focusArea: z.enum(['handles','shooting','conditioning','iq','defense','vertical','other']),
+    dueAt: z.number().optional()
+  })
 });
 
+const Output = z.object({
+  createdGoalId: z.string(),
+  createdMissions: z.array(z.object({
+    id: z.string(),
+    title: z.string(),
+    xp: z.number()
+  }))
+});
 
-// 4. Define the Main Flow
+export type MissionsFlowInput = z.infer<typeof Input>;
+export type MissionsFlowOutput = z.infer<typeof Output>;
+
 export const missionsFlow = ai.defineFlow(
-  {
-    name: 'missionsFlow',
-    inputSchema: MissionsInputSchema,
-    outputSchema: z.object({}), // Flow will write to DB, not return data to client directly
-  },
-  async ({ userId, playerInput }) => {
-    console.log(`Generating missions for user ${userId} with input: "${playerInput}"`);
+  { name: 'missionsFlow', inputSchema: Input, outputSchema: Output },
+  async ({ userId, goal }) => {
+    // read last 10 messages to personalize
+    const memSnap = await db.collection('aiTrainerMemory').doc(userId)
+      .collection('messages').orderBy('timestamp','desc').limit(10).get();
+    const history = memSnap.docs.reverse().map(d => d.data()).filter(m => typeof m.content === 'string');
 
-    // Step 1: Invalidate previous 'in-progress' goals
-    const goalsRef = collection(firestore, 'users', userId, 'goals');
-    const q = query(goalsRef, where('status', '==', 'in-progress'));
-    const oldGoalsSnapshot = await getDocs(q);
-    
-    if (!oldGoalsSnapshot.empty) {
-        const batch = writeBatch(firestore);
-        oldGoalsSnapshot.forEach(doc => {
-            batch.update(doc.ref, { status: 'expired' });
-        });
-        await batch.commit();
-        console.log(`Expired ${oldGoalsSnapshot.size} old goals for user ${userId}.`);
+    const system = `You are Coach M2DG, an elite basketball trainer.
+Generate 5 concise daily missions aligned to the player's goal.
+No markdown, no lists like 1), just bullet-like lines separated by newline.
+Each mission must include: short title, type (reps/time/skill/checkin/video), target number if relevant, and difficulty 1-3.
+Keep it actionable, gym-or-street friendly, 15–30 minutes each.`;
+
+    const prompt = `Goal: ${goal.title} (${goal.focusArea})
+Recent chat context:
+${history.map(h => `${h.role.toUpperCase()}: ${h.content}`).join('\n').slice(0, 2000)}
+
+Return JSON:
+{ "missions": [ { "title": "", "type":"reps|time|skill|checkin|video", "target": 0, "unit": "shots|mins|reps", "difficulty": 1|2|3 } ] }`;
+
+    const resp = await ai.generate({
+      model: googleAI.model('gemini-2.5-flash'),
+      system,
+      prompt,
+      config: { temperature: 0.7 }
+    });
+
+    const parsed = JSON.parse(resp.text || '{"missions":[]}');
+    const now = Date.now();
+
+    // create goal doc
+    const goalRef = db.collection('users').doc(userId).collection('goals').doc();
+    await goalRef.set({
+      id: goalRef.id,
+      title: goal.title,
+      focusArea: goal.focusArea,
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+      dueAt: goal.dueAt ?? null
+    });
+
+    const missionsCol = goalRef.collection('missions');
+    const batch = db.batch();
+    const created: {id:string,title:string,xp:number}[] = [];
+
+    for (const m of (parsed.missions ?? []).slice(0,5)) {
+      const id = missionsCol.doc().id;
+      const xp = m.difficulty === 3 ? 100 : m.difficulty === 2 ? 50 : 25;
+      batch.set(missionsCol.doc(id), {
+        id,
+        goalId: goalRef.id,
+        title: m.title,
+        description: `${m.target ? `${m.target} ${m.unit||''}`.trim() : ''}`,
+        type: m.type,
+        difficulty: m.difficulty,
+        xp,
+        status: 'todo',
+        progress: m.target ? { current: 0, target: m.target, unit: m.unit||null } : null,
+        createdAt: now
+      });
+      created.push({ id, title: m.title, xp });
     }
+    await batch.commit();
 
-    // Step 2: Generate new missions from the AI model
-    const { output } = await generateMissionsPrompt({ playerInput });
-
-    if (!output) {
-      throw new Error('AI failed to generate missions.');
-    }
-    
-    console.log('AI Generated Output:', output);
-
-    // Step 3: Add the new goal document to Firestore
-    const newGoal = {
-      title: output.goalTitle,
-      status: 'in-progress',
-      createdAt: serverTimestamp(),
-      missions: output.missions.map(mission => ({
-        ...mission,
-        id: crypto.randomUUID(),
-        status: 'in-progress',
-      })),
-    };
-
-    await addDoc(goalsRef, newGoal);
-    console.log(`New goal "${newGoal.title}" saved for user ${userId}.`);
-
-    return {}; // Return empty object as success indicator
+    return { createdGoalId: goalRef.id, createdMissions: created };
   }
 );

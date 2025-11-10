@@ -153,18 +153,32 @@ export type AdminLog = {
     timestamp: Timestamp;
 };
 
-export type Mission = {
-    id: string;
-    title: string;
-    description: string;
-    xpValue: number;
-    status: 'in-progress' | 'complete';
+export type GoalStatus = 'active' | 'paused' | 'completed' | 'archived';
+export type MissionStatus = 'todo' | 'in_progress' | 'completed' | 'expired';
+
+export interface Goal {
+  id: string;
+  title: string;                 // "Improve off-hand dribble"
+  description?: string;
+  focusArea: 'handles' | 'shooting' | 'conditioning' | 'iq' | 'defense' | 'vertical' | 'other';
+  targetMetric?: { key: string; target: number; unit?: string }; // {key:'freeThrows', target:200, unit:'shots'}
+  dueAt?: number;                // ms epoch
+  status: GoalStatus;
+  createdAt: number;
+  updatedAt: number;
 }
 
-export type Goal = {
-    id: string;
-    title: string;
-    status: 'in-progress' | 'complete' | 'expired';
-    createdAt: Timestamp;
-    missions: Mission[];
+export interface Mission {
+  id: string;
+  goalId: string;
+  title: string;                 // "3×(10) weak-hand crossovers at game pace"
+  description?: string;
+  difficulty: 1 | 2 | 3;         // 1 easy, 3 hard
+  type: 'reps' | 'time' | 'checkin' | 'skill' | 'video';
+  xp: number;                    // 25 / 50 / 100
+  status: MissionStatus;
+  progress?: { current: number; target: number; unit?: string };
+  createdAt: number;
+  completedAt?: number;
+  expiresAt?: number;
 }

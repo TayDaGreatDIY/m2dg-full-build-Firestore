@@ -1,159 +1,105 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, updateDoc, doc } from 'firebase/firestore';
-import type { Goal, Mission } from '@/lib/types';
-import { DesktopHeader } from '@/components/ui/TopNav';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Checkbox } from '@/components/ui/checkbox';
+import { useEffect, useMemo, useState } from 'react';
+import { useUser, useFirestore } from '@/firebase';
+import { collection, doc, onSnapshot, orderBy, query, updateDoc, where, getDocs } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, Target } from 'lucide-react';
-import { missionsFlow } from '@/ai/flows/missions-flow';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { DesktopHeader } from '@/components/ui/TopNav';
+import { Loader2, Trophy, CheckCircle2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { Mission } from '@/lib/types';
 
-const MissionItem = ({ mission, onToggle }: { mission: Mission; onToggle: (missionId: string, status: boolean) => void }) => {
-  return (
-    <div
-      className={`flex items-center space-x-3 p-3 rounded-md transition-all ${
-        mission.status === 'complete' ? 'bg-green-600/10 text-white/60' : 'bg-background'
-      }`}
-    >
-      <Checkbox
-        id={mission.id}
-        checked={mission.status === 'complete'}
-        onCheckedChange={(checked) => onToggle(mission.id, !!checked)}
-        className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-400"
-      />
-      <label
-        htmlFor={mission.id}
-        className={`flex-1 text-sm font-medium leading-none ${
-          mission.status === 'complete' ? 'line-through' : ''
-        }`}
-      >
-        {mission.title}
-        <span className="ml-2 text-xs font-normal text-white/40">({mission.xpValue} XP)</span>
-      </label>
-    </div>
-  );
-};
 
 export default function MissionsPage() {
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
-  const { toast } = useToast();
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { user } = useUser();
+  const db = useFirestore();
+  const [missions, setMissions] = useState<Mission[]|null>(null);
+  const [loadingId, setLoadingId] = useState<string|null>(null);
 
-  const goalsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(
-      collection(firestore, 'users', user.uid, 'goals'),
-      where('status', '==', 'in-progress'),
-      orderBy('createdAt', 'desc')
-    );
-  }, [user, firestore]);
+  useEffect(() => {
+    if (!user || !db) return;
+    const goalsCol = collection(db, 'users', user.uid, 'goals');
+    // active goals
+    getDocs(query(goalsCol, where('status','==','active'))).then(activeSnap => {
+      const ids = activeSnap.docs.map(d => d.id);
+      if (!ids.length) { setMissions([]); return; }
+      const unsubscribes = ids.map(goalId => onSnapshot(
+        query(collection(db, 'users', user.uid, 'goals', goalId, 'missions'), orderBy('createdAt','asc')),
+        snap => {
+          const all = snap.docs.map(d => d.data() as Mission);
+          setMissions(prev => {
+            const others = (prev || []).filter(m => m.goalId !== goalId);
+            return [...others, ...all].sort((a,b)=> (a.status === 'completed') ? 1 : (b.status === 'completed') ? -1 : 0);
+          });
+        }
+      ));
+      return () => unsubscribes.forEach(u => u());
+    });
+  }, [user, db]);
 
-  const { data: goals, isLoading: areGoalsLoading, setData: setGoals } = useCollection<Goal>(goalsQuery);
+  const totalXP = useMemo(() => (missions||[]).filter(m=>m.status==='completed').reduce((s,m)=>s+m.xp,0), [missions]);
 
-  const handleToggleMission = async (missionId: string, isComplete: boolean) => {
-    if (!user || !goals) return;
-
-    const goal = goals.find(g => g.missions.some(m => m.id === missionId));
-    if (!goal) return;
-
-    const goalRef = doc(firestore, 'users', user.uid, 'goals', goal.id);
-
-    const updatedMissions = goal.missions.map(m =>
-      m.id === missionId ? { ...m, status: isComplete ? 'complete' : 'in-progress' } : m
-    );
-    
-    const allComplete = updatedMissions.every(m => m.status === 'complete');
-    
+  const markComplete = async (m: Mission) => {
+    if (!user || !db) return;
+    setLoadingId(m.id);
     try {
-      await updateDoc(goalRef, {
-        missions: updatedMissions,
-        status: allComplete ? 'complete' : 'in-progress',
-      });
-
-      if (isComplete) {
-        const mission = goal.missions.find(m => m.id === missionId);
-        toast({
-          title: 'Mission Complete!',
-          description: `You earned ${mission?.xpValue || 0} XP. Keep grinding!`,
-          className: 'bg-green-600/20 border-green-500/50 text-white',
-        });
-      }
-    } catch (error) {
-      console.error('Error updating mission status:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not update mission.' });
+      const ref = doc(db, 'users', user.uid, 'goals', m.goalId, 'missions', m.id);
+      await updateDoc(ref, { status: 'completed', completedAt: Date.now() });
+      // xp counters doc - increment handled by cloud function
+    } finally {
+      setLoadingId(null);
     }
   };
-  
-  const handleSetNewGoal = async () => {
-    if (!user) return;
-    setIsGenerating(true);
-    try {
-      // In a real app, you'd have a dialog to get playerInput
-      const playerInput = "I want to improve my 3-point shooting.";
-      await missionsFlow({ userId: user.uid, playerInput });
-      // The flow now handles creating the docs, so we just need to let the useCollection hook refresh
-      toast({
-        title: "New Missions Generated!",
-        description: "Your new goals are ready. Let's get to work."
-      })
-    } catch (error) {
-      console.error("Error generating new missions:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not generate new missions.' });
-    } finally {
-      setIsGenerating(false);
-    }
-  }
-
-
-  const pageLoading = isUserLoading || areGoalsLoading;
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col h-screen">
       <DesktopHeader pageTitle="Missions" />
-      <main className="flex-1 w-full p-4 pb-24 space-y-6 md:p-6">
-        <div className="max-w-md mx-auto space-y-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-2xl font-bold font-headline">Weekly Missions</h2>
-              <p className="text-white/60 text-sm">Complete these goals to earn XP and unlock badges.</p>
-            </div>
-             <Button onClick={handleSetNewGoal} disabled={isGenerating}>
-              {isGenerating ? <Loader2 className="animate-spin" /> : <Target />}
-              {isGenerating ? 'Generating...' : 'Set New Goal'}
-            </Button>
-          </div>
+      <div className="max-w-3xl mx-auto w-full p-4 space-y-6">
+        <div className="flex items-center gap-3">
+          <Trophy className="h-6 w-6 text-yellow-400" />
+          <div className="text-white/90 font-medium">Total XP Earned From Missions: {totalXP}</div>
+        </div>
 
-          {pageLoading ? (
-            <Skeleton className="h-48 w-full" />
-          ) : goals && goals.length > 0 ? (
-            goals.map((goal) => (
-              <Card key={goal.id} className="bg-card border-white/10">
-                <CardHeader>
-                  <CardTitle className="font-headline text-lg text-gold">{goal.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {goal.missions.map((mission) => (
-                    <MissionItem key={mission.id} mission={mission} onToggle={handleToggleMission} />
-                  ))}
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            <div className="text-center py-20 bg-card rounded-lg border border-dashed border-white/20">
-              <Target className="mx-auto w-12 h-12 text-white/30" />
-              <h3 className="font-bold font-headline text-lg mt-4">No Active Missions</h3>
-              <p className="text-sm text-white/50 mt-1">Click "Set New Goal" to get started.</p>
+        <div className="space-y-4">
+          {missions === null && <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-white/50" /></div>}
+          {(missions ?? []).map(m => (
+            <div key={m.id} className={cn(
+              'rounded-xl p-4 border border-white/10 bg-card/60 backdrop-blur',
+              m.status==='completed' && 'opacity-60'
+            )}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-white font-medium">{m.title}</div>
+                  <div className="text-white/60 text-sm">
+                    {m.progress?.target ? `${m.progress.current ?? 0}/${m.progress.target} ${m.progress.unit||''}` : 'Single task'}
+                    {' • '}Difficulty {m.difficulty} • {m.xp} XP
+                  </div>
+                </div>
+
+                {m.status!=='completed' ? (
+                  <Button size="sm" onClick={()=>markComplete(m)} disabled={loadingId===m.id}>
+                    {loadingId===m.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CheckCircle2 className="h-4 w-4 mr-1"/> Complete</>}
+                  </Button>
+                ) : (
+                  <div className="text-green-400 text-sm flex items-center"><CheckCircle2 className="h-4 w-4 mr-1"/>Completed</div>
+                )}
+              </div>
+
+              {m.progress?.target && (
+                <div className="mt-3">
+                  <Progress value={Math.min(100, Math.round(((m.progress.current||0)/m.progress.target)*100))} />
+                </div>
+              )}
             </div>
+          ))}
+
+          {missions && missions.length===0 && (
+            <div className="text-center text-white/60 py-10">No missions yet. Ask Coach M2DG to generate your first goal.</div>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }
