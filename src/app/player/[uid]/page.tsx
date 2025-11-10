@@ -3,7 +3,8 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useUser as useAuthUser, useDoc, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
-import { doc, collection, query, orderBy, limit, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { openOrCreateChat } from '@/lib/chat';
 import { DesktopHeader } from '@/components/ui/TopNav';
 import UserAvatar from '@/components/ui/UserAvatar';
 import StatTile from '@/components/ui/StatTile';
@@ -16,12 +17,14 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 export default function PlayerProfilePage() {
   const params = useParams();
   const router = useRouter();
   const { user: currentUser } = useAuthUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
 
   const uid = typeof params.uid === "string" && params.uid !== "undefined" ? params.uid : null;
 
@@ -57,41 +60,20 @@ export default function PlayerProfilePage() {
 
 
   const handleSendMessage = async () => {
-    if (!currentUser || !player || isCreatingChat || !firestore) return;
+    if (!currentUser || !player || isCreatingChat) return;
 
     setIsCreatingChat(true);
 
     try {
-      const chatsRef = collection(firestore, "chats");
-      const existingChatQuery = query(
-        chatsRef,
-        where("participants", "array-contains", currentUser.uid)
-      );
-
-      const querySnapshot = await getDocs(existingChatQuery);
-      let existingChatId: string | null = null;
-      
-      querySnapshot.forEach(doc => {
-        const chat = doc.data();
-        if (chat.participants.includes(player.uid)) {
-          existingChatId = doc.id;
-        }
-      });
-
-      if (existingChatId) {
-        router.push(`/messages/${existingChatId}`);
-      } else {
-        const newChatRef = await addDoc(collection(firestore, "chats"), {
-          participants: [currentUser.uid, player.uid],
-          createdAt: serverTimestamp(),
-          lastMessage: ``,
-          lastSender: '',
-          lastUpdated: serverTimestamp(),
-        });
-        router.push(`/messages/${newChatRef.id}`);
-      }
+      const { id: chatId } = await openOrCreateChat(currentUser.uid, player.uid);
+      router.push(`/messages/${chatId}`);
     } catch (error) {
       console.error("Error creating or finding chat:", error);
+       toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not start a new conversation.",
+      });
     } finally {
       setIsCreatingChat(false);
     }

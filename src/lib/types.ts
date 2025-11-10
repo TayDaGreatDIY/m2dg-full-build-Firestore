@@ -7,7 +7,7 @@ export type User = {
     displayName: string;
     username: string;
     avatarURL: string;
-    role: 'admin' | 'player';
+    role: 'admin' | 'player' | 'coach' | 'moderator';
     status: 'active' | 'suspended';
     xp: number;
     winStreak: number;
@@ -39,6 +39,7 @@ export type Court = {
   longitude?: number;
   createdAt?: Timestamp;
   status?: string;
+  radius?: number;
 };
 
 export type Challenge = {
@@ -118,10 +119,10 @@ export type FeedPost = {
 export type Chat = {
     id: string;
     participants: string[];
-    lastMessage: string;
-    lastSender: string;
-    lastUpdated: Timestamp;
-    otherUser?: {
+    createdAt: Timestamp;
+    lastMessageAt: Timestamp;
+    lastMessage?: string; // Optional, for display in chat list
+    otherUser?: { // For enriching chat list UI
         username: string;
         avatarURL: string;
     }
@@ -129,8 +130,7 @@ export type Chat = {
 
 export type Message = {
     id: string;
-    senderId: string;
-    receiverId: string;
+    from: string;
     text: string;
     createdAt: Timestamp;
 };

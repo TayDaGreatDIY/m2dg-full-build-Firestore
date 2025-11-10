@@ -2,9 +2,10 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import type { Message, Chat, User as AppUser } from "@/lib/types";
+import { sendMessage } from "@/lib/chat";
+import type { Message, Chat } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -52,46 +53,11 @@ export default function ChatThread({ chatId }: ChatThreadProps) {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === "" || !user || !firestore || !chat) return;
-
-    const messagesColRef = collection(firestore, 'chats', chatId, 'messages');
-    const chatDocRef = doc(firestore, 'chats', chatId);
-    const otherUserId = chat.participants.find(id => id !== user.uid);
-
-    if (!otherUserId) {
-        console.error("Could not find other user in chat.");
-        return;
-    }
-
-    const notificationColRef = collection(firestore, "users", otherUserId, "notifications");
+    if (newMessage.trim() === "" || !user || !chat) return;
 
     try {
-      await addDoc(messagesColRef, {
-        senderId: user.uid,
-        receiverId: otherUserId,
-        text: newMessage,
-        createdAt: serverTimestamp(),
-      });
-      
-      await updateDoc(chatDocRef, {
-        lastMessage: newMessage,
-        lastSender: user.uid,
-        lastUpdated: serverTimestamp(),
-      });
-
-      // Create a notification for the other user
-      await addDoc(notificationColRef, {
-          userId: otherUserId,
-          fromId: user.uid,
-          fromName: user.displayName,
-          type: "new_message",
-          link: `/messages/${chatId}`,
-          read: false,
-          createdAt: serverTimestamp(),
-      });
-
-
-      setNewMessage("");
+        await sendMessage(chatId, user.uid, newMessage.trim());
+        setNewMessage("");
     } catch (error) {
       console.error("Error sending message:", error);
     }
@@ -109,13 +75,13 @@ export default function ChatThread({ chatId }: ChatThreadProps) {
             key={msg.id}
             className={cn(
               "flex items-end gap-2",
-              msg.senderId === user?.uid ? "justify-end" : "justify-start"
+              msg.from === user?.uid ? "justify-end" : "justify-start"
             )}
           >
             <div
               className={cn(
                 "max-w-xs md:max-w-md rounded-2xl px-4 py-2",
-                msg.senderId === user?.uid
+                msg.from === user?.uid
                   ? "bg-orange text-black rounded-br-none"
                   : "bg-white/10 text-white rounded-bl-none"
               )}

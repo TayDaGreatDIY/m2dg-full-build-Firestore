@@ -4,13 +4,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query, where, getDocs, addDoc, serverTimestamp, limit } from "firebase/firestore";
+import { collection, query, where } from "firebase/firestore";
 import type { User as AppUser } from "@/lib/types";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, VisuallyHidden } from "@/components/ui/dialog";
+import { openOrCreateChat } from "@/lib/chat";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import UserAvatar from "@/components/ui/UserAvatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -34,44 +34,16 @@ export default function NewMessageDialog({ isOpen, onOpenChange }: NewMessageDia
   const { data: users, isLoading } = useCollection<AppUser>(usersQuery);
 
   const handleUserSelect = async (selectedUser: AppUser) => {
-    if (!currentUser || isCreatingChat || !firestore) return;
+    if (!currentUser || isCreatingChat) return;
 
     setIsCreatingChat(true);
 
     try {
-      // Check if a chat already exists
-      const chatsRef = collection(firestore, "chats");
-      const existingChatQuery = query(
-        chatsRef,
-        where("participants", "array-contains", currentUser.uid)
-      );
-
-      const querySnapshot = await getDocs(existingChatQuery);
-      let existingChatId: string | null = null;
-      
-      querySnapshot.forEach(doc => {
-        const chat = doc.data();
-        if (chat.participants.includes(selectedUser.uid)) {
-          existingChatId = doc.id;
-        }
-      });
-
-      if (existingChatId) {
-        router.push(`/messages/${existingChatId}`);
-      } else {
-        // Create a new chat
-        const newChatRef = await addDoc(collection(firestore, "chats"), {
-          participants: [currentUser.uid, selectedUser.uid],
-          createdAt: serverTimestamp(),
-          lastMessage: ``,
-          lastSender: '',
-          lastUpdated: serverTimestamp(),
-        });
-        router.push(`/messages/${newChatRef.id}`);
-      }
+      const { id: chatId } = await openOrCreateChat(currentUser.uid, selectedUser.uid);
+      router.push(`/messages/${chatId}`);
       onOpenChange(false);
     } catch (error) {
-      console.error("Error creating or finding chat:", error);
+      console.error("Error opening or creating chat:", error);
       toast({
         variant: "destructive",
         title: "Error",
