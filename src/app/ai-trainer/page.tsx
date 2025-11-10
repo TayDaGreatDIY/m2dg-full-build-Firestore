@@ -1,6 +1,8 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { DesktopHeader } from '@/components/ui/TopNav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,7 +10,7 @@ import { Send, Bot, Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, doc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { aiTrainerFlow } from '@/ai/flows/ai-trainer-flow';
 import { useToast } from '@/hooks/use-toast';
@@ -21,12 +23,15 @@ type Message = {
 export default function AiTrainerPage() {
   const { user: authUser } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
   const { toast } = useToast();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [autoPlayVoice, setAutoPlayVoice] = useState(false);
+  const [xp, setXp] = useState(0);
+  const [streak, setStreak] = useState(0);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -40,6 +45,20 @@ export default function AiTrainerPage() {
       }
     }
   };
+
+  // 🧩 Fetch mission progress counters
+  useEffect(() => {
+    if (!authUser || !firestore) return;
+    const ref = doc(firestore, "users", authUser.uid, "counters", "main");
+    const unsubscribe = onSnapshot(ref, (snap) => {
+      const data = snap.data();
+      if (data) {
+        setXp(data.xp || 0);
+        setStreak(data.streak || 0);
+      }
+    });
+    return () => unsubscribe();
+  }, [authUser, firestore]);
 
   // 🧩 Load messages
   useEffect(() => {
@@ -188,6 +207,23 @@ export default function AiTrainerPage() {
             )}
           </div>
         </ScrollArea>
+        
+        {/* 🧩 Mission Progress Widget */}
+        {authUser && (
+          <div className="p-4 border-t border-white/10 bg-background/60 flex items-center justify-between">
+            <div className="text-white/80 text-sm">
+              <div>🔥 XP: {xp || 0}</div>
+              <div>📅 Streak: {streak || 0} days</div>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => router.push("/missions")}
+              className="bg-orange/80 hover:bg-orange text-black"
+            >
+              View Missions
+            </Button>
+          </div>
+        )}
 
         <div className="p-4 bg-background border-t border-white/10">
           <form onSubmit={handleSubmit} className="flex items-center gap-2">

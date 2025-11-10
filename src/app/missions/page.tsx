@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, doc, onSnapshot, orderBy, query, updateDoc, where, getDocs } from 'firebase/firestore';
+import { collection, doc, onSnapshot, orderBy, query, updateDoc, where, getDocs, increment } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { DesktopHeader } from '@/components/ui/TopNav';
@@ -47,7 +47,7 @@ export default function MissionsPage() {
     try {
       const ref = doc(db, 'users', user.uid, 'goals', m.goalId, 'missions', m.id);
       await updateDoc(ref, { status: 'completed', completedAt: Date.now() });
-      // xp counters doc - increment handled by cloud function
+      // xp counters doc - increment handled by cloud function if setup, otherwise client-side
     } finally {
       setLoadingId(null);
     }
@@ -57,9 +57,41 @@ export default function MissionsPage() {
     <div className="flex flex-col h-screen">
       <DesktopHeader pageTitle="Missions" />
       <div className="max-w-3xl mx-auto w-full p-4 space-y-6">
-        <div className="flex items-center gap-3">
-          <Trophy className="h-6 w-6 text-yellow-400" />
-          <div className="text-white/90 font-medium">Total XP Earned From Missions: {totalXP}</div>
+        <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+                <Trophy className="h-6 w-6 text-yellow-400" />
+                <div className="text-white/90 font-medium">Total XP Earned From Missions: {totalXP}</div>
+            </div>
+            <Button
+                onClick={async () => {
+                if (!user || !db) return;
+                const topic = prompt("What goal do you want to work on? (e.g., Improve jump shot)") || "Improve jump shot";
+                if (!topic) return;
+
+                // Simple focus area mapping for now
+                const focus = topic.toLowerCase().includes('shot') ? 'shooting'
+                            : topic.toLowerCase().includes('handle') ? 'handles'
+                            : 'other';
+                try {
+                    const res = await fetch("/api/missions-flow", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ userId: user.uid, goal: { title: topic, focusArea: focus } }),
+                    });
+                    const data = await res.json();
+                    if(res.ok) {
+                        alert(`✅ New goal created! Refreshing your missions...`);
+                    } else {
+                        throw new Error(data.error || "Failed to create goal.");
+                    }
+                } catch (err: any) {
+                    console.error(err);
+                    alert(`⚠️ Could not create a goal: ${err.message}`);
+                }
+                }}
+            >
+                ➕ Generate New Goal
+            </Button>
         </div>
 
         <div className="space-y-4">
@@ -96,10 +128,11 @@ export default function MissionsPage() {
           ))}
 
           {missions && missions.length===0 && (
-            <div className="text-center text-white/60 py-10">No missions yet. Ask Coach M2DG to generate your first goal.</div>
+            <div className="text-center text-white/60 py-10">No missions yet. Generate a new goal to get started!</div>
           )}
         </div>
       </div>
     </div>
   );
 }
+
