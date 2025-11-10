@@ -249,5 +249,3 @@ function DeleteChallengeDialog({ challengeId, challengeTitle, onDelete }: { chal
         </AlertDialog>
     );
 }
-
-    
