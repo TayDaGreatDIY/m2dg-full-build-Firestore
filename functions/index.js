@@ -168,3 +168,6 @@ exports.onMilestoneXP = functions.firestore
 // Export new notification functions
 const { onNewNotification } = require('./notifications');
 exports.onNewNotification = onNewNotification;
+
+const { onMissionComplete: onMissionCompleteV2 } = require('./onMissionComplete');
+exports.onMissionCompleteV2 = onMissionCompleteV2;

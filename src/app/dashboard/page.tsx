@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -32,6 +33,7 @@ import { Progress } from "@/components/ui/progress";
 import { getPlayerRank, Rank } from "@/lib/xpSystem";
 import { formatDistanceToNow } from "date-fns";
 import { Loader2 } from "lucide-react";
+import XpBar from "@/components/ui/XpBar";
 
 /* ------------------------------
    COMPONENTS
@@ -254,6 +256,7 @@ export default function DashboardPage() {
               <Progress value={xpProgress} className="h-2" />
             </div>
           )}
+          <XpBar />
         </div>
 
         {/* Stats */}

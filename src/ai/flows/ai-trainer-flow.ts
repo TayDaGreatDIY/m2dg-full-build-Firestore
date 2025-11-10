@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview The AI logic for the personalized basketball trainer.
@@ -6,6 +7,13 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { googleAI } from '@genkit-ai/google-genai';
+import * as admin from 'firebase-admin';
+
+if (!admin.apps.length) {
+    admin.initializeApp();
+}
+const db = admin.firestore();
+
 
 const AITrainerInputSchema = z.object({
   prompt: z.string().describe("The user's message to the AI trainer."),
@@ -13,6 +21,7 @@ const AITrainerInputSchema = z.object({
     role: z.enum(['user', 'assistant']),
     content: z.string(),
   })).optional().describe("The recent conversation history."),
+  userId: z.string(),
 });
 export type AITrainerInput = z.infer<typeof AITrainerInputSchema>;
 
@@ -27,7 +36,7 @@ export const aiTrainerFlow = ai.defineFlow(
     inputSchema: AITrainerInputSchema,
     outputSchema: AITrainerOutputSchema,
   },
-  async ({ prompt, history = [] }) => {
+  async ({ prompt, history = [], userId }) => {
     const conversationHistory = history.map(h => ({ role: h.role, content: h.content }));
 
     const response = await ai.generate({
@@ -47,6 +56,16 @@ export const aiTrainerFlow = ai.defineFlow(
 
     const reply = response.text || 'Let’s lock in and get this work 💪🏽 You got this.';
     
+    if (reply.includes("XP") || reply.includes("mission")) {
+        await db.collection("users").doc(userId).collection("notifications").add({
+          title: "Coach Update 💬",
+          body: "Keep pushing! Your missions build XP — finish one today 💪🏽",
+          type: "coach",
+          read: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
     return { reply };
   }
 );

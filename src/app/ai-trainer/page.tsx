@@ -125,7 +125,7 @@ export default function AiTrainerPage() {
 
     try {
       const plainHistory = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
-      const { reply } = await aiTrainerFlow({ prompt: currentInput, history: plainHistory });
+      const { reply } = await aiTrainerFlow({ prompt: currentInput, history: plainHistory, userId: authUser.uid });
 
       const assistantMessage: Message = { role: 'assistant', content: reply };
       setMessages(prev => [...prev, assistantMessage]);
@@ -157,7 +157,7 @@ export default function AiTrainerPage() {
               checked={autoPlayVoice}
               onChange={(e) => setAutoPlayVoice(e.target.checked)}
             />
-            Auto-play Voice 🔈
+            Auto-play Voice 🔈 
           </label>
         </div>
 
