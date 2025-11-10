@@ -321,3 +321,5 @@ export default function AiTrainerPage() {
     </div>
   );
 }
+
+    
