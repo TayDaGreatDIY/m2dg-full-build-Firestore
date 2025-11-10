@@ -12,6 +12,7 @@ import UserAvatar from "@/components/ui/UserAvatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 type NewMessageDialogProps = {
   isOpen: boolean;
