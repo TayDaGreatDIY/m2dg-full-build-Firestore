@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { DesktopHeader } from '@/components/ui/TopNav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send, Bot, Loader2, Mic, Speaker } from 'lucide-react';
+import { Send, Basketball, Loader2, Mic, Speaker } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { useUser, useFirestore } from '@/firebase';
@@ -288,7 +288,7 @@ export default function AiTrainerPage() {
               <div key={index} className={cn('flex items-start gap-4', m.role === 'user' ? 'justify-end' : 'justify-start')}>
                 {m.role !== 'user' && (
                   <div className="p-2 bg-orange rounded-full">
-                    <Bot className="h-6 w-6 text-black" />
+                    <Basketball className="h-6 w-6 text-black" />
                   </div>
                 )}
                 <div className={cn('max-w-md rounded-2xl px-4 py-3 text-sm shadow-md group relative', m.role === 'user' ? 'bg-secondary text-white rounded-br-none' : 'text-white/90 rounded-bl-none', getEmotionStyle(m.emotion))}>
@@ -299,7 +299,7 @@ export default function AiTrainerPage() {
             ))}
             {isLoading && (
               <div className="flex items-start gap-4">
-                <div className="p-2 bg-orange rounded-full"><Bot className="h-6 w-6 text-black" /></div>
+                <div className="p-2 bg-orange rounded-full"><Basketball className="h-6 w-6 text-black" /></div>
                 <div className="bg-card rounded-2xl rounded-bl-none px-4 py-3 shadow-md"><Loader2 className="h-5 w-5 animate-spin text-white/50" /></div>
               </div>
             )}
