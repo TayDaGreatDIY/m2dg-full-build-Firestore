@@ -99,5 +99,3 @@ export default function HostRunDialog({ isOpen, onOpenChange, courtId, courtName
     </Dialog>
   );
 }
-
-    
