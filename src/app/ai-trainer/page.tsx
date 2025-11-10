@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { DesktopHeader } from '@/components/ui/TopNav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send, Bot, Loader2, Mic, Speaker } from 'lucide-react';
+import { Send, Bot, Loader2, Mic, Speaker, Basketball } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { useUser, useFirestore } from '@/firebase';
