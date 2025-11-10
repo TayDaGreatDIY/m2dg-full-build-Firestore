@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -30,7 +31,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       // Rules for user-specific subcollections (e.g., training logs, notifications)
-      match /{subcollection}/{docId} {
+      match /training_sessions/{docId} {
+        // Only the user themselves can read or write to their own subcollections.
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+       match /goals/{docId} {
         // Only the user themselves can read or write to their own subcollections.
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
@@ -39,12 +44,6 @@ service cloud.firestore {
     // Rules for the AI Trainer Memory collection
     match /aiTrainerMemory/{userId}/{document=**} {
       // Users can only read and write to their own memory documents.
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Rules for the AI Trainer Analytics collection
-    match /aiTrainerAnalytics/{userId} {
-      // Users can only read and write to their own analytics document.
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
@@ -110,3 +109,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
