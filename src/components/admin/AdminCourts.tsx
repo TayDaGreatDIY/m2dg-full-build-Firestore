@@ -201,11 +201,9 @@ function CourtFormDialog({ trigger, court, onFormSubmit }: { trigger: React.Reac
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <DialogHeader>
                           <DialogTitle>{court ? 'Edit Court' : 'Add New Court'}</DialogTitle>
-                           <VisuallyHidden>
-                            <DialogDescription>
+                           <DialogDescription>
                                 {court ? 'Update the details for this court.' : 'Fill in the details for the new court.'}
-                            </DialogDescription>
-                           </VisuallyHidden>
+                           </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
                             <FormField control={form.control} name="name" render={({ field }) => (

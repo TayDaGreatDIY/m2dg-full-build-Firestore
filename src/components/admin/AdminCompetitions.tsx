@@ -205,11 +205,9 @@ function CompetitionFormDialog({ trigger, competition, onFormSubmit }: { trigger
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <DialogHeader>
                             <DialogTitle>{competition ? 'Edit Competition' : 'Add New Competition'}</DialogTitle>
-                             <VisuallyHidden>
-                              <DialogDescription>
+                             <DialogDescription>
                                 {competition ? 'Update the details for this competition.' : 'Fill in the details for the new competition.'}
                               </DialogDescription>
-                           </VisuallyHidden>
                         </DialogHeader>
                         <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
                             <FormField control={form.control} name="title" render={({ field }) => (

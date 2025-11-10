@@ -180,11 +180,9 @@ function ChallengeFormDialog({ trigger, challenge, onFormSubmit }: { trigger: Re
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <DialogHeader>
                           <DialogTitle>{challenge ? 'Edit Challenge' : 'Add New Challenge'}</DialogTitle>
-                           <VisuallyHidden>
-                              <DialogDescription>
+                           <DialogDescription>
                                 {challenge ? 'Update the details for this challenge.' : 'Fill in the details for the new challenge.'}
-                              </DialogDescription>
-                           </VisuallyHidden>
+                           </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
                             <FormField control={form.control} name="title" render={({ field }) => (

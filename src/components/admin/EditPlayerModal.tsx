@@ -136,11 +136,9 @@ export default function EditPlayerModal({
           >
             <DialogHeader>
               <DialogTitle>Edit Player: {player.displayName}</DialogTitle>
-              <VisuallyHidden>
-                <DialogDescription>
+              <DialogDescription>
                   Update player stats and details below.
-                </DialogDescription>
-              </VisuallyHidden>
+              </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
