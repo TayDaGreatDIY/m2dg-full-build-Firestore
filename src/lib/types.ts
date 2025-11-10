@@ -119,7 +119,8 @@ export type Chat = {
     id: string;
     participants: string[];
     lastMessage: string;
-    lastTimestamp: Timestamp;
+    lastSender: string;
+    lastUpdated: Timestamp;
     otherUser?: {
         username: string;
         avatarURL: string;
@@ -128,7 +129,8 @@ export type Chat = {
 
 export type Message = {
     id: string;
-    userId: string;
+    senderId: string;
+    receiverId: string;
     text: string;
     createdAt: Timestamp;
 };

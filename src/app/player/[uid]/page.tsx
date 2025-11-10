@@ -83,8 +83,10 @@ export default function PlayerProfilePage() {
       } else {
         const newChatRef = await addDoc(collection(firestore, "chats"), {
           participants: [currentUser.uid, player.uid],
-          lastMessage: `Started a conversation with ${player.displayName}.`,
-          lastTimestamp: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          lastMessage: ``,
+          lastSender: '',
+          lastUpdated: serverTimestamp(),
         });
         router.push(`/messages/${newChatRef.id}`);
       }

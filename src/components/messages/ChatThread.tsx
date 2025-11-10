@@ -56,7 +56,7 @@ export default function ChatThread({ chatId }: ChatThreadProps) {
 
     const messagesColRef = collection(firestore, 'chats', chatId, 'messages');
     const chatDocRef = doc(firestore, 'chats', chatId);
-    const otherUserId = chat.memberIds.find(id => id !== user.uid);
+    const otherUserId = chat.participants.find(id => id !== user.uid);
 
     if (!otherUserId) {
         console.error("Could not find other user in chat.");
@@ -67,14 +67,16 @@ export default function ChatThread({ chatId }: ChatThreadProps) {
 
     try {
       await addDoc(messagesColRef, {
-        userId: user.uid,
+        senderId: user.uid,
+        receiverId: otherUserId,
         text: newMessage,
         createdAt: serverTimestamp(),
       });
       
       await updateDoc(chatDocRef, {
         lastMessage: newMessage,
-        lastTimestamp: serverTimestamp(),
+        lastSender: user.uid,
+        lastUpdated: serverTimestamp(),
       });
 
       // Create a notification for the other user
@@ -107,13 +109,13 @@ export default function ChatThread({ chatId }: ChatThreadProps) {
             key={msg.id}
             className={cn(
               "flex items-end gap-2",
-              msg.userId === user?.uid ? "justify-end" : "justify-start"
+              msg.senderId === user?.uid ? "justify-end" : "justify-start"
             )}
           >
             <div
               className={cn(
                 "max-w-xs md:max-w-md rounded-2xl px-4 py-2",
-                msg.userId === user?.uid
+                msg.senderId === user?.uid
                   ? "bg-orange text-black rounded-br-none"
                   : "bg-white/10 text-white rounded-bl-none"
               )}

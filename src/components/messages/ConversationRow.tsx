@@ -15,10 +15,10 @@ export default function ConversationRow({ conversation }: ConversationRowProps) 
   const [timeAgo, setTimeAgo] = useState('');
 
   useEffect(() => {
-    if (conversation.lastTimestamp) {
-      setTimeAgo(formatDistanceToNow(conversation.lastTimestamp.toDate(), { addSuffix: true }));
+    if (conversation.lastUpdated) {
+      setTimeAgo(formatDistanceToNow(conversation.lastUpdated.toDate(), { addSuffix: true }));
     }
-  }, [conversation.lastTimestamp]);
+  }, [conversation.lastUpdated]);
 
   if (!conversation.otherUser) return null;
 

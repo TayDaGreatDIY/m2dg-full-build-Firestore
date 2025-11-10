@@ -62,8 +62,10 @@ export default function NewMessageDialog({ isOpen, onOpenChange }: NewMessageDia
         // Create a new chat
         const newChatRef = await addDoc(collection(firestore, "chats"), {
           participants: [currentUser.uid, selectedUser.uid],
-          lastMessage: "Started a new conversation.",
-          lastTimestamp: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          lastMessage: ``,
+          lastSender: '',
+          lastUpdated: serverTimestamp(),
         });
         router.push(`/messages/${newChatRef.id}`);
       }
