@@ -300,4 +300,3 @@ function DeleteCourtDialog({ courtId, courtName, onDelete }: { courtId: string; 
         </AlertDialog>
     );
 }
-
