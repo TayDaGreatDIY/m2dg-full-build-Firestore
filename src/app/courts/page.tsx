@@ -2,7 +2,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useCollection, useFirestore } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import type { Court } from "@/lib/types";
 import CourtCard from "@/components/courts/CourtCard";
@@ -23,7 +23,7 @@ export default function CourtsPage() {
   const [selectedState, setSelectedState] = useState<string | "all">("all");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
-  const courtsQuery = useMemo(() => {
+  const courtsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, "courts"), orderBy("name", sortOrder));
   }, [firestore, sortOrder]);

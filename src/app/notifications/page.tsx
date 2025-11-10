@@ -121,12 +121,14 @@ const NotificationDiagnostics = () => {
         const testMissionId = `diagnosticMission_${Date.now()}`;
         const missionRef = doc(firestore, 'users', user.uid, 'goals', testGoalId, 'missions', testMissionId);
 
-        await setDoc(missionRef, { title: 'Diagnostic Trigger Test' });
+        await updateDoc(missionRef, { title: 'Diagnostic Trigger Test', status: 'todo' });
+        await updateDoc(missionRef, { status: 'completed' });
+
 
         const triggerPromise = new Promise((resolve, reject) => {
           const q = query(
             collection(firestore, 'users', user.uid, 'notifications'),
-            where('body', '==', 'Coach M2DG just assigned: Diagnostic Trigger Test')
+            where('body', 'like', 'You just earned%')
           );
           const unsub = onSnapshot(q, async (snap) => {
             if (!snap.empty) {

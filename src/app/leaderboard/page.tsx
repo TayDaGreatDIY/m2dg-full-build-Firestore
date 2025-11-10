@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useMemo } from "react";
 import { DesktopHeader } from "@/components/ui/TopNav";
-import { useCollection, useFirestore } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy, limit } from "firebase/firestore";
 import type { UserWithId } from "@/lib/types";
 import LeaderboardList from "@/components/leaderboard/LeaderboardList";
@@ -11,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function LeaderboardPage() {
   const firestore = useFirestore();
 
-  const leaderboardQuery = useMemo(() => {
+  const leaderboardQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, "users"), orderBy("xp", "desc"), limit(50));
   }, [firestore]);
