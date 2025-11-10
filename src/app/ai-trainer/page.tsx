@@ -4,16 +4,14 @@ import { useState, useRef, useEffect } from 'react';
 import { DesktopHeader } from '@/components/ui/TopNav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send, Bot, Loader2, Mic } from 'lucide-react';
+import { Send, Bot, Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { useUser, useFirestore } from '@/firebase';
-import { doc, setDoc, collection, query, orderBy, limit, onSnapshot, Unsubscribe, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { aiTrainerFlow } from '@/ai/flows/ai-trainer-flow';
 import { useToast } from '@/hooks/use-toast';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 
 type Message = {
   role: 'user' | 'assistant';
