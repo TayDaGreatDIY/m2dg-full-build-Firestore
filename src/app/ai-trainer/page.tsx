@@ -9,13 +9,15 @@ import { Send, Bot, Loader2, Mic, Speaker, Play, Pause } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { useUser, useFirestore } from '@/firebase';
-import { doc, getDoc, setDoc, updateDoc, increment, collection, query, orderBy, limit, serverTimestamp, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { doc, setDoc, collection, query, orderBy, limit, serverTimestamp, onSnapshot, Unsubscribe, addDoc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { aiTrainerFlow, Emotion } from '@/ai/flows/ai-trainer-flow';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 declare global {
   interface Window {
@@ -184,17 +186,41 @@ export default function AiTrainerPage() {
   const logEmotionAnalytics = async (emotion: Emotion) => {
       if (!authUser || !firestore) return;
       const analyticsRef = doc(firestore, 'aiTrainerAnalytics', authUser.uid);
-      await setDoc(analyticsRef, {
+      
+      const dataToSet = {
         lastEmotion: emotion,
         lastUpdated: serverTimestamp(),
         [`${emotion}Count`]: increment(1),
-      }, { merge: true });
+      };
+
+      setDoc(analyticsRef, dataToSet, { merge: true }).catch(error => {
+        errorEmitter.emit(
+          'permission-error',
+          new FirestorePermissionError({
+            path: analyticsRef.path,
+            operation: 'write',
+            requestResourceData: dataToSet,
+          })
+        );
+      });
   };
   
-  const saveMessage = async (message: Message) => {
+  const saveMessage = (message: Message) => {
     if (!authUser || !firestore) return;
+    
     const messageRef = collection(firestore, 'aiTrainerMemory', authUser.uid, "messages");
-    await setDoc(doc(messageRef), { ...message, timestamp: serverTimestamp() });
+    const dataToSave = { ...message, timestamp: serverTimestamp() };
+
+    addDoc(messageRef, dataToSave).catch(error => {
+        errorEmitter.emit(
+          'permission-error',
+          new FirestorePermissionError({
+            path: `${messageRef.path}/<auto-id>`,
+            operation: 'create',
+            requestResourceData: dataToSave,
+          })
+        );
+    });
   };
 
   const handleSubmit = async (e?: React.FormEvent, voiceInput?: string) => {
