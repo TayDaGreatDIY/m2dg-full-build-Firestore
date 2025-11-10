@@ -1,11 +1,10 @@
-
 "use client";
 
 import { DesktopHeader } from "@/components/ui/TopNav";
 import { Button } from "@/components/ui/button";
 import ConversationRow from "@/components/messages/ConversationRow";
 import { useUser, useCollection, useMemoFirebase, useFirestore } from "@/firebase";
-import type { Chat, User } from "@/lib/types";
+import type { Conversation, User as AppUser } from "@/lib/types";
 import { collection, query, where, getDoc, doc } from "firebase/firestore";
 import { Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,54 +16,55 @@ export default function MessagesPage() {
   const firestore = useFirestore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   
-  const chatsQuery = useMemoFirebase(() => {
+  const conversationsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return query(collection(firestore, "chats"), where("participants", "array-contains", user.uid));
+    return query(collection(firestore, "conversations"), where("memberIds", "array-contains", user.uid));
   }, [user, firestore]);
     
-  const { data: rawChats, isLoading } = useCollection<Chat>(chatsQuery);
-  const [chats, setChats] = useState<Chat[]>([]);
+  const { data: rawConversations, isLoading } = useCollection<Conversation>(conversationsQuery);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [enrichLoading, setEnrichLoading] = useState(true);
 
   useEffect(() => {
-    async function enrichChats() {
-      if (!firestore || !user || !rawChats) {
-        setChats([]);
+    async function enrichConversations() {
+      if (!firestore || !user || !rawConversations) {
+        setConversations([]);
         setEnrichLoading(false);
         return;
       }
       
       setEnrichLoading(true);
-      const enriched = await Promise.all(rawChats.map(async (chat) => {
-        const otherUserId = chat.participants.find(id => id !== user.uid);
-        if (!otherUserId) return chat;
+      const enriched = await Promise.all(rawConversations.map(async (convo) => {
+        const otherUserId = convo.memberIds.find(id => id !== user.uid);
+        if (!otherUserId) return convo;
 
         const userDocRef = doc(firestore, 'users', otherUserId);
         const userDocSnap = await getDoc(userDocRef);
 
         if (userDocSnap.exists()) {
-          const otherUserData = userDocSnap.data() as User;
+          const otherUserData = userDocSnap.data() as AppUser;
           return {
-            ...chat,
+            ...convo,
             otherUser: {
+              uid: otherUserData.uid,
               username: otherUserData.username,
               avatarURL: otherUserData.avatarURL,
             }
           };
         }
-        return chat;
+        return convo;
       }));
-      setChats(enriched);
+      setConversations(enriched);
       setEnrichLoading(false);
     }
 
-    if (rawChats) {
-        enrichChats();
+    if (rawConversations) {
+      enrichConversations();
     }
-  }, [rawChats, user, firestore]);
+  }, [rawConversations, user, firestore]);
 
 
-  const hasConversations = chats.length > 0;
+  const hasConversations = conversations.length > 0;
   const pageLoading = isLoading || enrichLoading;
 
   return (
@@ -92,8 +92,8 @@ export default function MessagesPage() {
               </div>
               ) : hasConversations ? (
               <div className="space-y-3">
-                  {chats.map((convo) => (
-                  convo.otherUser && <ConversationRow key={convo.id} conversation={convo} />
+                  {conversations.map((convo) => (
+                    <ConversationRow key={convo.id} conversation={convo} />
                   ))}
               </div>
               ) : (

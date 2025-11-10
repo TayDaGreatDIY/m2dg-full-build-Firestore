@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
@@ -7,25 +6,24 @@ import ChatThread from "@/components/messages/ChatThread";
 import UserAvatar from "@/components/ui/UserAvatar";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { doc, getDoc } from "firebase/firestore";
+import { doc } from "firebase/firestore";
 import { useFirestore, useUser, useDoc, useMemoFirebase } from "@/firebase";
-import type { Chat, User as AppUser } from "@/lib/types";
+import type { Conversation, User as AppUser } from "@/lib/types";
 
 export default function ChatPage() {
   const params = useParams();
-  const router = useRouter();
   const { user: authUser } = useUser();
   const firestore = useFirestore();
-  const chatId = params.chatId as string;
+  const conversationId = params.chatId as string;
   
-  const chatDocRef = useMemoFirebase(() => {
-    if (!firestore || !chatId) return null;
-    return doc(firestore, 'chats', chatId);
-  }, [firestore, chatId]);
+  const conversationDocRef = useMemoFirebase(() => {
+    if (!firestore || !conversationId) return null;
+    return doc(firestore, 'conversations', conversationId);
+  }, [firestore, conversationId]);
 
-  const { data: chat, isLoading: isChatLoading } = useDoc<Chat>(chatDocRef);
+  const { data: conversation, isLoading: isConversationLoading } = useDoc<Conversation>(conversationDocRef);
 
-  const otherUserId = chat?.participants.find(id => id !== authUser?.uid);
+  const otherUserId = conversation?.memberIds.find(id => id !== authUser?.uid);
   
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !otherUserId) return null;
@@ -34,22 +32,14 @@ export default function ChatPage() {
 
   const { data: otherUser, isLoading: isUserLoading } = useDoc<AppUser>(userDocRef);
 
-  const loading = isChatLoading || isUserLoading;
-
-  useEffect(() => {
-    if (!isChatLoading && !chat) {
-      // If the chat doesn't exist after loading, maybe redirect
-      console.warn(`Chat with ID ${chatId} not found.`);
-      // router.push('/messages');
-    }
-  }, [isChatLoading, chat, router, chatId]);
+  const loading = isConversationLoading || isUserLoading;
 
   if (loading) {
     return <div className="flex h-screen max-w-md mx-auto items-center justify-center"><Loader2 className="animate-spin text-primary" size={32} /></div>;
   }
   
-  if (!chat || !otherUser) {
-    return <div className="flex h-screen max-w-md mx-auto items-center justify-center"><p>Chat not found.</p></div>;
+  if (!conversation || !otherUser) {
+    return <div className="flex h-screen max-w-md mx-auto items-center justify-center"><p>Conversation not found.</p></div>;
   }
 
   return (
@@ -63,8 +53,7 @@ export default function ChatPage() {
           <p className="font-bold text-sm">@{otherUser.username}</p>
         </div>
       </header>
-      <ChatThread chatId={chatId} />
+      <ChatThread conversationId={conversationId} otherUserId={otherUserId} />
     </div>
   );
 }
-    

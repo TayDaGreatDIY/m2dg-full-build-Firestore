@@ -1,4 +1,3 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -13,26 +12,26 @@ service cloud.firestore {
     }
 
     // -------------------
-    // CHATS (top-level)
+    // CONVERSATIONS
     // -------------------
-    match /chats/{chatId} {
-      // Read your own chats
-      allow get, list: if request.auth != null && request.auth.uid in resource.data.participants;
-      // Create a new chat you are part of
-      allow create: if request.auth != null
-        && request.resource.data.participants is list
-        && request.auth.uid in request.resource.data.participants
-        && request.resource.data.participants.size() >= 2;
-      // Update only if you are a participant (e.g., bump lastMessageAt)
-      allow update: if request.auth != null && request.auth.uid in resource.data.participants;
-      // Optional: block deletes for now
-      allow delete: if false;
+    match /conversations/{cid} {
+      // Each conversation document MUST contain: memberIds: array<string>, createdAt, lastMessage (optional)
+      allow read, update, delete: if request.auth != null && request.auth.uid in resource.data.memberIds;
 
-      // Messages subcollection inside a chat: /chats/{chatId}/messages/{messageId}
-      match /messages/{messageId} {
+      // Creation: requester must be in the memberIds and memberIds must be a small array (e.g., 2–10)
+      allow create: if request.auth != null
+                    && request.auth.uid in request.resource.data.memberIds
+                    && request.resource.data.memberIds is list
+                    && request.resource.data.memberIds.size() >= 2
+                    && request.resource.data.memberIds.size() <= 10;
+
+      // Messages subcollection
+      match /messages/{mid} {
+        // Parent conversation governs access
         allow read, create: if request.auth != null
-          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
-        // No updates/deletes of old messages in this phase
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(cid)).data.memberIds;
+
+        // Optional: block edits/deletes of existing messages (common for chat)
         allow update, delete: if false;
       }
     }

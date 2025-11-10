@@ -1,4 +1,3 @@
-
 import { Timestamp } from "firebase/firestore";
 
 export type User = {
@@ -116,13 +115,18 @@ export type FeedPost = {
   streak?: number;
 };
 
-export type Chat = {
-    id: string;
-    participants: string[];
+export type Conversation = {
+    id: string; // The doc ID
+    memberIds: string[];
     createdAt: Timestamp;
-    lastMessageAt: Timestamp;
-    lastMessage?: string; // Optional, for display in chat list
-    otherUser?: { // For enriching chat list UI
+    lastMessage: {
+        text: string;
+        senderId: string;
+        sentAt: Timestamp;
+    };
+    // For UI enrichment, not stored in Firestore
+    otherUser?: {
+        uid: string;
         username: string;
         avatarURL: string;
     }
@@ -130,10 +134,11 @@ export type Chat = {
 
 export type Message = {
     id: string;
-    from: string;
     text: string;
-    createdAt: Timestamp;
+    senderId: string;
+    sentAt: Timestamp;
 };
+
 
 export type Notification = {
     id: string;

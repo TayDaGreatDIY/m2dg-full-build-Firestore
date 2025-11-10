@@ -1,24 +1,26 @@
-
 "use client";
 
-import type { Chat } from "@/lib/types";
+import type { Conversation } from "@/lib/types";
 import UserAvatar from "@/components/ui/UserAvatar";
 import Link from "next/link";
 import { formatDistanceToNow } from 'date-fns';
 import { useState, useEffect } from "react";
 
 type ConversationRowProps = {
-  conversation: Chat;
+  conversation: Conversation;
 };
 
 export default function ConversationRow({ conversation }: ConversationRowProps) {
   const [timeAgo, setTimeAgo] = useState('');
 
   useEffect(() => {
-    if (conversation.lastUpdated) {
-      setTimeAgo(formatDistanceToNow(conversation.lastUpdated.toDate(), { addSuffix: true }));
+    if (conversation.lastMessage?.sentAt) {
+      // Check if sentAt is a Firestore Timestamp
+      if (typeof conversation.lastMessage.sentAt.toDate === 'function') {
+        setTimeAgo(formatDistanceToNow(conversation.lastMessage.sentAt.toDate(), { addSuffix: true }));
+      }
     }
-  }, [conversation.lastUpdated]);
+  }, [conversation.lastMessage]);
 
   if (!conversation.otherUser) return null;
 
@@ -29,11 +31,13 @@ export default function ConversationRow({ conversation }: ConversationRowProps) 
         <div className="flex-1 overflow-hidden">
           <div className="flex justify-between items-baseline">
             <p className="font-bold text-sm">@{conversation.otherUser.username}</p>
-            <p className="text-xs text-white/40">
-              {timeAgo}
-            </p>
+            {timeAgo && (
+                <p className="text-xs text-white/40">
+                {timeAgo}
+                </p>
+            )}
           </div>
-          <p className="text-sm text-white/60 truncate">{conversation.lastMessage}</p>
+          <p className="text-sm text-white/60 truncate">{conversation.lastMessage?.text || 'No messages yet'}</p>
         </div>
       </div>
     </Link>

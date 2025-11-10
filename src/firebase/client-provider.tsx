@@ -8,6 +8,9 @@ interface FirebaseClientProviderProps {
   children: ReactNode;
 }
 
+// Rename the db export from firebase/config to avoid conflict
+import { db as firestoreDb } from './config';
+
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
   const firebaseServices = useMemo(() => {
     // Initialize Firebase on the client side, once per component mount.

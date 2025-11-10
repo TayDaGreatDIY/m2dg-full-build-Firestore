@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -6,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useUser, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
 import type { User as AppUser } from "@/lib/types";
-import { openOrCreateChat } from "@/lib/chat";
+import { openOrCreateConversation } from "@/lib/chat";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import UserAvatar from "@/components/ui/UserAvatar";
@@ -39,8 +38,8 @@ export default function NewMessageDialog({ isOpen, onOpenChange }: NewMessageDia
     setIsCreatingChat(true);
 
     try {
-      const { id: chatId } = await openOrCreateChat(currentUser.uid, selectedUser.uid);
-      router.push(`/messages/${chatId}`);
+      const conversationId = await openOrCreateConversation(currentUser.uid, selectedUser.uid);
+      router.push(`/messages/${conversationId}`);
       onOpenChange(false);
     } catch (error) {
       console.error("Error opening or creating chat:", error);

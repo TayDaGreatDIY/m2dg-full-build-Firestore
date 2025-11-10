@@ -1,4 +1,3 @@
-
 'use client';
 
 import { getApp, getApps, initializeApp } from 'firebase/app';
@@ -40,3 +39,4 @@ export { FirebaseClientProvider } from './client-provider';
 // For convenience, you can also export the initialized services if you have a single point of entry
 const { firebaseApp, auth, firestore, storage } = initializeFirebase();
 export { firebaseApp, auth, firestore, storage };
+export { db } from './config';

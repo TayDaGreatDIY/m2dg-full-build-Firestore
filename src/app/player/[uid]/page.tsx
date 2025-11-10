@@ -1,10 +1,9 @@
-
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
 import { useUser as useAuthUser, useDoc, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { doc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
-import { openOrCreateChat } from '@/lib/chat';
+import { openOrCreateConversation } from '@/lib/chat';
 import { DesktopHeader } from '@/components/ui/TopNav';
 import UserAvatar from '@/components/ui/UserAvatar';
 import StatTile from '@/components/ui/StatTile';
@@ -65,8 +64,8 @@ export default function PlayerProfilePage() {
     setIsCreatingChat(true);
 
     try {
-      const { id: chatId } = await openOrCreateChat(currentUser.uid, player.uid);
-      router.push(`/messages/${chatId}`);
+      const conversationId = await openOrCreateConversation(currentUser.uid, player.uid);
+      router.push(`/messages/${conversationId}`);
     } catch (error) {
       console.error("Error creating or finding chat:", error);
        toast({

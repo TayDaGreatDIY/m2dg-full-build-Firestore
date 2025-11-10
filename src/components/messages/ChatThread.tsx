@@ -1,51 +1,50 @@
-
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { useUser, useFirestore } from '@/firebase';
 import { sendMessage } from "@/lib/chat";
-import type { Message, Chat } from "@/lib/types";
+import type { Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Paperclip, Send, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 type ChatThreadProps = {
-  chatId: string;
+  conversationId: string;
+  otherUserId?: string;
 };
 
-export default function ChatThread({ chatId }: ChatThreadProps) {
+export default function ChatThread({ conversationId, otherUserId }: ChatThreadProps) {
   const { user } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const chatDocRef = useMemoFirebase(() => {
-    if (!firestore || !chatId) return null;
-    return doc(firestore, 'chats', chatId);
-  }, [firestore, chatId]);
-
-  const { data: chat } = useDoc<Chat>(chatDocRef);
-
-
   useEffect(() => {
-    if (!chatId || !firestore) return;
+    if (!conversationId || !firestore) return;
+
     const messagesQuery = query(
-      collection(firestore, 'chats', chatId, 'messages'),
-      orderBy('createdAt', 'asc')
+      collection(firestore, 'conversations', conversationId, 'messages'),
+      orderBy('sentAt', 'asc')
     );
     const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-      const msgs: Message[] = [];
-      snapshot.forEach(doc => msgs.push({ id: doc.id, ...doc.data() } as Message));
+      const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
       setMessages(msgs);
       setLoading(false);
+    }, (error) => {
+        console.error("Error fetching messages:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not load messages.'});
+        setLoading(false);
     });
+
     return () => unsubscribe();
-  }, [chatId, firestore]);
+  }, [conversationId, firestore, toast]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -53,13 +52,14 @@ export default function ChatThread({ chatId }: ChatThreadProps) {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === "" || !user || !chat) return;
+    if (newMessage.trim() === "" || !user) return;
 
     try {
-        await sendMessage(chatId, user.uid, newMessage.trim());
+        await sendMessage(conversationId, user.uid, newMessage.trim());
         setNewMessage("");
     } catch (error) {
       console.error("Error sending message:", error);
+      toast({ variant: 'destructive', title: 'Send Failed', description: 'Could not send your message.'});
     }
   };
   
@@ -75,13 +75,13 @@ export default function ChatThread({ chatId }: ChatThreadProps) {
             key={msg.id}
             className={cn(
               "flex items-end gap-2",
-              msg.from === user?.uid ? "justify-end" : "justify-start"
+              msg.senderId === user?.uid ? "justify-end" : "justify-start"
             )}
           >
             <div
               className={cn(
                 "max-w-xs md:max-w-md rounded-2xl px-4 py-2",
-                msg.from === user?.uid
+                msg.senderId === user?.uid
                   ? "bg-orange text-black rounded-br-none"
                   : "bg-white/10 text-white rounded-bl-none"
               )}
