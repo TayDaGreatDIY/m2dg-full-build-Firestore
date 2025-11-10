@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -78,6 +77,7 @@ export default function MissionsPage() {
                         }),
                     });
                     const data = await res.json();
+                    console.log("🔥 Mission Flow Response:", data);
                     if (res.ok) {
                         alert(`✅ New goal created! Refreshing your missions...`);
                     } else {
