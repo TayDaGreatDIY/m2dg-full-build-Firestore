@@ -165,6 +165,72 @@ exports.onMilestoneXP = functions.firestore
         await db.collection("users").doc(uid).collection("notifications").add(notification);
     });
 
+exports.updatePlayerStats = functions.firestore
+    .document('challenges/{challengeId}')
+    .onUpdate(async (change, context) => {
+        const before = change.before.data();
+        const after = change.after.data();
+
+        // Only run if the status just changed to "completed"
+        if (before.status === 'completed' || after.status !== 'completed') {
+            return;
+        }
+
+        const { winnerId, challengerId, opponentId, courtName } = after;
+        if (!winnerId) {
+            console.log("No winnerId found, exiting.");
+            return;
+        }
+
+        const loserId = winnerId === challengerId ? opponentId : challengerId;
+
+        const winnerRef = db.collection('users').doc(winnerId);
+        const loserRef = db.collection('users').doc(loserId);
+
+        try {
+            const winnerDoc = await winnerRef.get();
+            const winnerData = winnerDoc.data();
+            const loserDoc = await loserRef.get();
+            const loserData = loserDoc.data();
+            
+            if (!winnerData || !loserData) {
+                console.error("Winner or loser document not found.");
+                return;
+            }
+
+            // Transaction to update both players
+            await db.runTransaction(async (transaction) => {
+                // Update winner: +50 XP, increment win streak
+                transaction.update(winnerRef, {
+                    xp: admin.firestore.FieldValue.increment(50),
+                    winStreak: admin.firestore.FieldValue.increment(1)
+                });
+
+                // Update loser: reset win streak
+                transaction.update(loserRef, {
+                    winStreak: 0
+                });
+            });
+
+            // Send notification to winner
+            const notificationsRef = db.collection('users').doc(winnerId).collection('notifications');
+            await notificationsRef.add({
+                title: "Challenge Won! 🏆",
+                body: `You defeated ${loserData.displayName} at ${courtName} and earned +50 XP!`,
+                type: "challenge_win",
+                read: false,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                link: `/challenges`,
+                meta: { challengeId: context.params.challengeId },
+            });
+
+            console.log(`Stats updated for challenge ${context.params.challengeId}. Winner: ${winnerId}, Loser: ${loserId}`);
+
+        } catch (error) {
+            console.error("Error updating player stats for challenge:", error);
+        }
+    });
+
 // Export new notification functions
 const { onNewNotification } = require('./notifications');
 exports.onNewNotification = onNewNotification;
