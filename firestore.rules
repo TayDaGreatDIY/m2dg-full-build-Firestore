@@ -85,10 +85,10 @@ service cloud.firestore {
       allow read: if request.auth != null && (request.auth.uid == resource.data.challengerId || request.auth.uid == resource.data.opponentId);
       // Allow create if user is the challenger
       allow create: if request.auth != null && request.resource.data.challengerId == request.auth.uid;
-      // Allow opponent to accept/decline
-      allow update: if request.auth != null && request.auth.uid == resource.data.opponentId && request.resource.data.status in ['accepted', 'declined'];
-      // Allow either player to update results
-      allow update: if request.auth != null && (request.auth.uid == resource.data.challengerId || request.auth.uid == resource.data.opponentId) && request.resource.data.status in ['completed', 'disputed'];
+      // Allow opponent to accept/decline or either player to update results
+      allow update: if request.auth != null && 
+                    ( (request.auth.uid == resource.data.opponentId && request.resource.data.status in ['accepted', 'declined']) ||
+                      ((request.auth.uid == resource.data.challengerId || request.auth.uid == resource.data.opponentId) && request.resource.data.status in ['completed', 'disputed']) );
 
       match /disputes/{disputeId} {
         allow read, write: if request.auth != null && (isAdmin() || request.auth.uid == resource.data.raisedBy);
