@@ -14,6 +14,8 @@ import type { User, TrainingLog, MatchHistory } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 export default function PlayerProfilePage() {
   const params = useParams();
@@ -179,7 +181,11 @@ export default function PlayerProfilePage() {
                 <h3 className="font-bold font-headline text-lg">My Achievements</h3>
                 <div className="flex flex-wrap gap-2">
                     {player.badges.map(badge => (
-                        <div key={badge.id} className="bg-gold/10 border border-gold/20 text-gold text-xs font-bold rounded-full px-3 py-1 flex items-center gap-1">
+                        <div key={badge.id} className={cn("text-xs font-bold rounded-full px-3 py-1 flex items-center gap-1",
+                            badge.tier === 'gold' && 'bg-gold/20 text-gold border border-gold/40',
+                            badge.tier === 'silver' && 'bg-slate-400/20 text-slate-300 border border-slate-400/40',
+                            badge.tier === 'bronze' && 'bg-amber-700/20 text-amber-600 border border-amber-700/40',
+                        )}>
                             <Award size={14} />
                             {badge.name}
                         </div>

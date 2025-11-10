@@ -23,7 +23,10 @@ service cloud.firestore {
       // Users can read their own data, or an admin can read any user's data.
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
       // Users can update their own data, or an admin can update any user's data.
-      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      // Allow updates to badges array.
+      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin())
+                    && (request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['displayName', 'username', 'aboutMe', 'homeCourtId', 'homeCourt', 'city', 'avatarURL', 'badges']));
       // Any authenticated user can create a user profile (e.g., on sign-up).
       allow create: if request.auth != null;
       // Only admins can list or delete users.
@@ -49,6 +52,9 @@ service cloud.firestore {
       }
 
       match /notifications/{notificationId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /notificationDiagnostics/{docId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }

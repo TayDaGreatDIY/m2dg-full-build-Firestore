@@ -20,7 +20,7 @@ export type User = {
     lastCheckInTime?: string; // ISO String for cooldown
     currentCourtId?: string;
     aboutMe?: string;
-    badges?: { id: string; name: string }[];
+    badges?: { id: string; name: string; tier: 'bronze' | 'silver' | 'gold' }[];
 };
 
 export type UserWithId = User & { id: string };
@@ -136,12 +136,15 @@ export type Message = {
 export type Notification = {
     id: string;
     userId: string;
-    fromId: string;
-    fromName: string;
+    title: string,
+    body: string,
+    fromId?: string;
+    fromName?: string;
     type: string;
     link: string;
     read: boolean;
     createdAt: Timestamp;
+    meta?: Record<string, any>;
 }
 
 export type AdminLog = {
