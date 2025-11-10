@@ -62,34 +62,33 @@ export default function MissionsPage() {
                 <Trophy className="h-6 w-6 text-yellow-400" />
                 <div className="text-white/90 font-medium">Total XP Earned From Missions: {totalXP}</div>
             </div>
-            <Button
+             <Button
+                className="bg-orange hover:bg-orange/80 text-black"
                 onClick={async () => {
-                if (!user || !db) return;
-                const topic = prompt("What goal do you want to work on? (e.g., Improve jump shot)") || "Improve jump shot";
-                if (!topic) return;
-
-                // Simple focus area mapping for now
-                const focus = topic.toLowerCase().includes('shot') ? 'shooting'
-                            : topic.toLowerCase().includes('handle') ? 'handles'
-                            : 'other';
-                try {
+                    if (!user) return;
+                    const topic = prompt("What goal do you want to work on? (e.g., Improve jump shot)") || "Improve jump shot";
+                    const focus = "shooting"; // Simplified for now
+                    try {
                     const res = await fetch("/api/missions-flow", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ userId: user.uid, goal: { title: topic, focusArea: focus } }),
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                        userId: user.uid,
+                        goal: { title: topic, focusArea: focus },
+                        }),
                     });
                     const data = await res.json();
-                    if(res.ok) {
+                    if (res.ok) {
                         alert(`✅ New goal created! Refreshing your missions...`);
                     } else {
                         throw new Error(data.error || "Failed to create goal.");
                     }
-                } catch (err: any) {
+                    } catch (err: any) {
                     console.error(err);
                     alert(`⚠️ Could not create a goal: ${err.message}`);
-                }
+                    }
                 }}
-            >
+                >
                 ➕ Generate New Goal
             </Button>
         </div>
@@ -135,4 +134,3 @@ export default function MissionsPage() {
     </div>
   );
 }
-
