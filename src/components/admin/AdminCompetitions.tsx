@@ -310,3 +310,5 @@ function DeleteCompetitionDialog({ competitionId, competitionTitle, onDelete }: 
         </AlertDialog>
     );
 }
+
+    

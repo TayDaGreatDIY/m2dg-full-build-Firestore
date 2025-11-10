@@ -533,13 +533,13 @@ const sidebarMenuButtonVariants = cva(
 )
 
 const SidebarMenuButton = React.forwardRef<
-  HTMLButtonElement,
-  React.ComponentProps<"button"> & {
+  HTMLAnchorElement,
+  React.ComponentProps<"a"> & {
     asChild?: boolean
     isActive?: boolean
     tooltip?: string | React.ComponentProps<typeof TooltipContent>
     left?: React.ReactNode;
-    href?: string;
+    href: string;
   } & VariantProps<typeof sidebarMenuButtonVariants>
 >(
   (
@@ -557,7 +557,7 @@ const SidebarMenuButton = React.forwardRef<
     },
     ref
   ) => {
-    const Comp = asChild ? Slot : "button"
+    const Comp = asChild ? Slot : "a"
     const { isMobile, state } = useSidebar()
     
     const buttonContent = (
@@ -568,30 +568,26 @@ const SidebarMenuButton = React.forwardRef<
     );
 
     const button = (
-      <Comp
-        ref={ref as any}
-        data-sidebar="menu-button"
-        data-size={size}
-        data-active={isActive}
-        className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-        {...props}
-      >
-        {buttonContent}
-      </Comp>
-    );
-
-    if (href) {
-      <Link href={href} passHref legacyBehavior>
-        {button}
+       <Link href={href} passHref legacyBehavior>
+        <Comp
+          ref={ref}
+          data-sidebar="menu-button"
+          data-size={size}
+          data-active={isActive}
+          className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+          {...props}
+        >
+          {buttonContent}
+        </Comp>
       </Link>
-    }
+    );
 
     if (!tooltip && !children) {
       tooltip = { children: left };
     }
 
     if (!tooltip) {
-      return href ? <Link href={href} passHref legacyBehavior><a>{button}</a></Link> : button;
+      return button;
     }
 
 
@@ -601,11 +597,9 @@ const SidebarMenuButton = React.forwardRef<
       }
     }
 
-    const trigger = href ? <Link href={href} passHref legacyBehavior><a>{button}</a></Link> : button;
-
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+        <TooltipTrigger asChild>{button}</TooltipTrigger>
         <TooltipContent
           side="right"
           align="center"
