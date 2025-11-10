@@ -9,7 +9,7 @@ import { Button } from "./button";
 import { doc } from "firebase/firestore";
 import { useFirestore } from "@/firebase";
 import type { User as AppUser } from "@/lib/types";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Sidebar } from "@/components/ui/sidebar";
 import Link from 'next/link';
 
 type TopNavProps = {
@@ -70,9 +70,8 @@ const DesktopHeader = ({ pageTitle }: { pageTitle: string }) => {
         }
     };
     return (
-        <header className="flex items-center justify-between py-4 border-b border-white/10 px-4">
+        <header className="hidden md:flex items-center justify-between py-4 border-b border-white/10 px-4">
             <div className="flex items-center gap-2">
-                <SidebarTrigger className="md:hidden" />
                 <h1 className="text-lg font-bold tracking-tight text-white/90 font-headline">{pageTitle}</h1>
             </div>
              <div className="flex items-center gap-4">

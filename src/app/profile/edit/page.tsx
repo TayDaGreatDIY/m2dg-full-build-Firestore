@@ -45,7 +45,10 @@ export default function EditProfilePage() {
 
   const { data: user, isLoading: isUserDocLoading } = useDoc<User>(userDocRef);
 
-  const courtsQuery = useMemoFirebase(() => collection(firestore, 'courts'), [firestore]);
+  const courtsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'courts');
+  }, [firestore]);
   const { data: courts, isLoading: areCourtsLoading } = useCollection<Court>(courtsQuery);
 
   const form = useForm<z.infer<typeof profileFormSchema>>({

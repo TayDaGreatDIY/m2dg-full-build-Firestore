@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, onSnapshot, orderBy, query, updateDoc, where, getDocs, increment } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';

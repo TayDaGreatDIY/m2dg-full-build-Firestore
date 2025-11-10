@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Send, Bot, Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import UserAvatar from '@/components/ui/UserAvatar';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, doc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { aiTrainerFlow } from '@/ai/flows/ai-trainer-flow';
