@@ -65,7 +65,7 @@ export default function PlayerProfilePage() {
       const chatsRef = collection(firestore, "chats");
       const existingChatQuery = query(
         chatsRef,
-        where("memberIds", "array-contains", currentUser.uid)
+        where("participants", "array-contains", currentUser.uid)
       );
 
       const querySnapshot = await getDocs(existingChatQuery);
@@ -73,7 +73,7 @@ export default function PlayerProfilePage() {
       
       querySnapshot.forEach(doc => {
         const chat = doc.data();
-        if (chat.memberIds.includes(player.uid)) {
+        if (chat.participants.includes(player.uid)) {
           existingChatId = doc.id;
         }
       });
@@ -82,7 +82,7 @@ export default function PlayerProfilePage() {
         router.push(`/messages/${existingChatId}`);
       } else {
         const newChatRef = await addDoc(collection(firestore, "chats"), {
-          memberIds: [currentUser.uid, player.uid],
+          participants: [currentUser.uid, player.uid],
           lastMessage: `Started a conversation with ${player.displayName}.`,
           lastTimestamp: serverTimestamp(),
         });

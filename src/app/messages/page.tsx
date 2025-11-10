@@ -19,7 +19,7 @@ export default function MessagesPage() {
   
   const chatsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return query(collection(firestore, "chats"), where("memberIds", "array-contains", user.uid));
+    return query(collection(firestore, "chats"), where("participants", "array-contains", user.uid));
   }, [user, firestore]);
     
   const { data: rawChats, isLoading } = useCollection<Chat>(chatsQuery);
@@ -36,7 +36,7 @@ export default function MessagesPage() {
       
       setEnrichLoading(true);
       const enriched = await Promise.all(rawChats.map(async (chat) => {
-        const otherUserId = chat.memberIds.find(id => id !== user.uid);
+        const otherUserId = chat.participants.find(id => id !== user.uid);
         if (!otherUserId) return chat;
 
         const userDocRef = doc(firestore, 'users', otherUserId);

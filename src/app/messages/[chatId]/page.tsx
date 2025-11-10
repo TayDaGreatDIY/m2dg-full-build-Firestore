@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
@@ -24,7 +25,7 @@ export default function ChatPage() {
 
   const { data: chat, isLoading: isChatLoading } = useDoc<Chat>(chatDocRef);
 
-  const otherUserId = chat?.memberIds.find(id => id !== authUser?.uid);
+  const otherUserId = chat?.participants.find(id => id !== authUser?.uid);
   
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !otherUserId) return null;

@@ -34,7 +34,7 @@ export default function NewMessageDialog({ isOpen, onOpenChange }: NewMessageDia
   const { data: users, isLoading } = useCollection<AppUser>(usersQuery);
 
   const handleUserSelect = async (selectedUser: AppUser) => {
-    if (!currentUser || isCreatingChat) return;
+    if (!currentUser || isCreatingChat || !firestore) return;
 
     setIsCreatingChat(true);
 
@@ -43,7 +43,7 @@ export default function NewMessageDialog({ isOpen, onOpenChange }: NewMessageDia
       const chatsRef = collection(firestore, "chats");
       const existingChatQuery = query(
         chatsRef,
-        where("memberIds", "array-contains", currentUser.uid)
+        where("participants", "array-contains", currentUser.uid)
       );
 
       const querySnapshot = await getDocs(existingChatQuery);
@@ -51,7 +51,7 @@ export default function NewMessageDialog({ isOpen, onOpenChange }: NewMessageDia
       
       querySnapshot.forEach(doc => {
         const chat = doc.data();
-        if (chat.memberIds.includes(selectedUser.uid)) {
+        if (chat.participants.includes(selectedUser.uid)) {
           existingChatId = doc.id;
         }
       });
@@ -61,7 +61,7 @@ export default function NewMessageDialog({ isOpen, onOpenChange }: NewMessageDia
       } else {
         // Create a new chat
         const newChatRef = await addDoc(collection(firestore, "chats"), {
-          memberIds: [currentUser.uid, selectedUser.uid],
+          participants: [currentUser.uid, selectedUser.uid],
           lastMessage: "Started a new conversation.",
           lastTimestamp: serverTimestamp(),
         });

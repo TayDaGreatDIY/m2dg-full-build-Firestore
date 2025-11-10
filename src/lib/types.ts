@@ -117,7 +117,7 @@ export type FeedPost = {
 
 export type Chat = {
     id: string;
-    memberIds: string[];
+    participants: string[];
     lastMessage: string;
     lastTimestamp: Timestamp;
     otherUser?: {

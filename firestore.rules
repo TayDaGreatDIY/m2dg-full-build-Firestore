@@ -1,144 +1,67 @@
 
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if the requesting user is an admin.
-    function isAdmin() {
-      // Safely access data to prevent errors if the user doc or role field doesn't exist.
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-    
-    // Global default rules for diagnostics.
-    // Allows any authenticated user to read any document.
-    // Denies all writes by default, requiring explicit allow rules below.
-    match /{document=**} {
-      allow read: if request.auth != null;
-      allow write: if false;
-    }
-
-    // Rules for the Users collection
+    // -------------------
+    // USERS
+    // -------------------
     match /users/{userId} {
-      // Users can read their own data, or an admin can read any user's data.
-      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      // Users can update their own data, or an admin can update any user's data.
-      // Allow updates to badges array.
-      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin())
-                    && (request.resource.data.diff(resource.data).affectedKeys()
-                        .hasOnly(['displayName', 'username', 'aboutMe', 'homeCourtId', 'homeCourt', 'city', 'avatarURL', 'badges']));
-      // Any authenticated user can create a user profile (e.g., on sign-up).
-      allow create: if request.auth != null;
-      // Only admins can list or delete users.
-      allow list: if isAdmin();
-      allow delete: if isAdmin();
-
-      // Rules for user-specific subcollections (e.g., training logs, notifications)
-      match /training_sessions/{docId} {
-        // Only the user themselves can read or write to their own subcollections.
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-       match /goals/{goalId} {
-        // Only the user themselves can read or write to their own subcollections.
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-
-        match /missions/{missionId} {
-          allow read, write: if request.auth != null && request.auth.uid == userId;
-        }
-      }
-
-      match /counters/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      match /notifications/{notificationId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      match /notificationDiagnostics/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      match /stats/{statId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-      match /badges/{badgeId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-    }
-    
-    // Rules for the AI Trainer Memory collection
-    match /aiTrainerMemory/{userId}/{document=**} {
-      // Users can only read and write to their own memory documents.
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Rules for public data collections (Courts, Challenges, Competitions)
-    match /courts/{courtId} {
-      // Any authenticated user can get a single court or list all courts.
-      allow get, list: if request.auth != null;
-      // Only admins can create, update, or delete courts.
-      allow create, update, delete: if isAdmin();
-    }
-    
-    // PLAYER VS PLAYER CHALLENGES
-    match /challenges/{challengeId} {
-      // Allow read if user is part of the challenge
-      allow read: if request.auth != null && (request.auth.uid == resource.data.challengerId || request.auth.uid == resource.data.opponentId);
-      // Allow create if user is the challenger
-      allow create: if request.auth != null && request.resource.data.challengerId == request.auth.uid;
-      // Allow opponent to accept/decline or either player to update results
-      allow update: if request.auth != null && 
-                    ( (request.auth.uid == resource.data.opponentId && request.resource.data.status in ['accepted', 'declined']) ||
-                      ((request.auth.uid == resource.data.challengerId || request.auth.uid == resource.data.opponentId) && request.resource.data.status in ['completed', 'disputed']) );
-
-      match /disputes/{disputeId} {
-        allow read, write: if request.auth != null && (isAdmin() || request.auth.uid == resource.data.raisedBy);
-      }
-    }
-    
-    match /competitions/{competitionId} {
-       // Any authenticated user can get a single competition or list all competitions.
-      allow get, list: if request.auth != null;
-      // Only admins can create, update, or delete competitions.
-      allow create, update, delete: if isAdmin();
-    }
-
-    // Rules for court subcollections (runs, check-ins)
-    match /courts/{courtId}/checkins/{checkinId} {
-        // Any authenticated user can read check-in data.
-        allow get, list: if request.auth != null;
-        // A user can only create a check-in for themselves.
-        allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-        // Check-ins cannot be updated after creation.
-        allow update: if false; 
-        // A user can delete their own check-in (check-out), or an admin can delete any.
-        allow delete: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
-    }
-     match /courts/{courtId}/runs/{runId} {
-        // Any authenticated user can read run data.
-        allow get, list: if request.auth != null;
-        // A user can only create a run where they are the host.
-        allow create: if request.auth != null && request.resource.data.hostUid == request.auth.uid;
-        // The host or an admin can update or delete a run.
-        allow update, delete: if request.auth != null && (resource.data.hostUid == request.auth.uid || isAdmin());
-    }
-    
-    // Rules for Chat collections
+    // -------------------
+    // CHATS (top-level)
+    // -------------------
     match /chats/{chatId} {
-      // Only members of a chat can read or write to it.
-      allow read, write: if request.auth != null && request.auth.uid in resource.data.memberIds;
-    }
-    match /chats/{chatId}/messages/{messageId} {
-      // Only members of a chat can read or write messages within it.
-      allow read, write: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.memberIds;
+      // Allow read/write if the user's UID is in the `participants` array.
+      // `request.resource.data` is checked for create operations.
+      // `resource.data` is checked for read, update, delete operations.
+      allow read, write: if request.auth != null && 
+        (request.resource.data.participants.hasAny([request.auth.uid]) ||
+         resource.data.participants.hasAny([request.auth.uid]));
     }
 
-    // Rules for Admin Activity Logs
-    match /admin_logs/{logId} {
-      // Only admins can read or create logs.
-      allow read: if isAdmin();
-      allow create: if isAdmin();
-      // Logs cannot be changed or deleted to maintain audit trail integrity.
-      allow update, delete: if false; 
+    // -------------------
+    // MESSAGES (inside chats)
+    // -------------------
+    match /chats/{chatId}/messages/{messageId} {
+      // A user can read/write messages in a chat they are a part of.
+      // This rule relies on getting the parent chat document to check participants.
+      allow read, write: if request.auth != null &&
+        get(/databases/$(database)/documents/chats/$(chatId)).data.participants.hasAny([request.auth.uid]);
+    }
+
+    // -------------------
+    // CHALLENGES + DISPUTES
+    // -------------------
+    match /challenges/{challengeId} {
+      allow read, write: if request.auth != null &&
+        (request.auth.uid == resource.data.challengerId ||
+         request.auth.uid == resource.data.opponentId);
+    }
+
+    match /challenges/{challengeId}/disputes/{disputeId} {
+      allow read, write: if request.auth != null &&
+        (request.auth.uid == resource.data.raisedBy);
+    }
+
+    // -------------------
+    // NOTIFICATIONS
+    // -------------------
+    match /notifications/{notificationId} {
+      allow read, write: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
+    }
+
+    // -------------------
+    // Other Collections
+    // -------------------
+    match /courts/{courtId} {
+      allow get, list: if request.auth != null;
+    }
+     match /courts/{courtId}/{document=**} {
+      allow read: if request.auth != null;
     }
   }
 }
