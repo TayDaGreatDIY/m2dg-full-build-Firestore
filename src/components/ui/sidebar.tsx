@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
-import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { DialogTitle, DialogDescription } from "@radix-ui/react-dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 import { useIsMobile } from "@/hooks/use-mobile"
