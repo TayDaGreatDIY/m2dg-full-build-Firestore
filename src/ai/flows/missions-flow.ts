@@ -1,4 +1,3 @@
-
 'use server';
 
 import { ai } from '@/ai/genkit';
@@ -6,8 +5,12 @@ import { z } from 'zod';
 import { googleAI } from '@genkit-ai/google-genai';
 import * as admin from 'firebase-admin';
 
-if (!admin.apps.length) admin.initializeApp();
+// Initialize a single instance of Firestore
+if (!admin.apps.length) {
+    admin.initializeApp();
+}
 const db = admin.firestore();
+
 
 const Input = z.object({
   userId: z.string(),
@@ -95,6 +98,13 @@ Return JSON:
       created.push({ id, title: m.title, xp });
     }
     await batch.commit();
+
+     // Initialize XP counter if missing
+    const counterRef = db.collection('users').doc(userId).collection('counters').doc('main');
+    await counterRef.set(
+      { xp: 0, streak: 0, missionsCompleted: 0, lastCompletionDate: null },
+      { merge: true }
+    );
 
     return { createdGoalId: goalRef.id, createdMissions: created };
   }

@@ -1,13 +1,13 @@
 import { missionsFlow } from "@/ai/flows/missions-flow";
-import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const body = await req.json();
+    console.log("missionsFlow request:", body);
     const res = await missionsFlow(body);
-    return NextResponse.json(res);
+    return Response.json(res);
   } catch (err: any) {
-    console.error("missions-flow route error:", err);
-    return NextResponse.json({ error: err.message || "Flow error" }, { status: 500 });
+    console.error("missionsFlow error:", err);
+    return Response.json({ error: err.message || "Flow error" }, { status: 500 });
   }
 }
