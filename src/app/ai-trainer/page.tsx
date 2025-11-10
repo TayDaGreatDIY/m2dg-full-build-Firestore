@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { DesktopHeader } from '@/components/ui/TopNav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -15,13 +15,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
-declare global {
-  interface Window {
-    SpeechRecognition: any;
-    webkitSpeechRecognition: any;
-  }
-}
-
 type Message = {
   role: 'user' | 'assistant';
   content: string;
@@ -35,13 +28,8 @@ export default function AiTrainerPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  
-  const [autoPlay, setAutoPlay] = useState(true);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
 
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
@@ -66,45 +54,14 @@ export default function AiTrainerPage() {
         }
     }, (error) => {
         console.warn("Could not load chat history:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not load chat history.'})
         setMessages([{ role: 'assistant', content: "Ready to take your game to the next level? Ask me anything from creating a workout plan to analyzing your last game." }]);
     });
     
     return () => unsubscribe();
-  }, [authUser, firestore]);
+  }, [authUser, firestore, toast]);
 
   useEffect(() => { scrollToBottom(); }, [messages]);
-
-  const handleToggleAutoPlay = (checked: boolean) => {
-    setAutoPlay(checked);
-    if (!checked && audioRef.current) audioRef.current.pause();
-  };
-
-  const handleStartListening = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      toast({ variant: 'destructive', title: 'Voice not supported' });
-      return;
-    }
-    if (isListening) {
-      recognitionRef.current?.stop();
-      return;
-    }
-
-    recognitionRef.current = new SpeechRecognition();
-    recognitionRef.current.lang = 'en-US';
-    recognitionRef.current.onresult = (event: any) => {
-      const speech = event.results[0][0].transcript;
-      setInput(speech);
-      handleSubmit(undefined, speech);
-    };
-    recognitionRef.current.onstart = () => setIsListening(true);
-    recognitionRef.current.onend = () => setIsListening(false);
-    recognitionRef.current.onerror = (event: any) => {
-        toast({ variant: "destructive", title: "Voice Error", description: `Could not process audio: ${event.error}` });
-        setIsListening(false);
-    };
-    recognitionRef.current.start();
-  };
   
   const saveMessage = (message: Message) => {
     if (!authUser || !firestore) return;
@@ -112,9 +69,9 @@ export default function AiTrainerPage() {
     addDoc(messageRef, { ...message, timestamp: serverTimestamp() });
   };
 
-  const handleSubmit = async (e?: React.FormEvent, voiceInput?: string) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    const currentInput = voiceInput || input;
+    const currentInput = input;
     if (!currentInput.trim() || isLoading || !authUser) return;
 
     const userMessage: Message = { role: 'user', content: currentInput };
@@ -125,21 +82,12 @@ export default function AiTrainerPage() {
 
     try {
       const plainHistory = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
-      const { reply, audioUrl } = await aiTrainerFlow({ prompt: currentInput, history: plainHistory });
+      const { reply } = await aiTrainerFlow({ prompt: currentInput, history: plainHistory });
       
       const assistantMessage: Message = { role: 'assistant', content: reply };
       setMessages(prev => [...prev, assistantMessage]);
       saveMessage(assistantMessage);
 
-      if (autoPlay && audioUrl) {
-        if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.src = '';
-        }
-        const audio = new Audio(audioUrl);
-        audioRef.current = audio;
-        audio.play().catch(e => console.error("Audio playback failed", e));
-      }
     } catch (error) {
       console.error('AI Trainer error:', error);
       const errorMessage: Message = { role: 'assistant', content: '⚠️ I’m having trouble connecting. Please try again in a moment.' };
@@ -154,13 +102,6 @@ export default function AiTrainerPage() {
       <DesktopHeader pageTitle="AI Trainer" />
       <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full min-h-0">
         
-        <div className='flex items-center justify-end px-4 pt-2'>
-          <div className="flex items-center space-x-2">
-            <Switch id="autoplay-switch" checked={autoPlay} onCheckedChange={handleToggleAutoPlay} />
-            <Label htmlFor="autoplay-switch" className='text-xs text-white/60'>Auto-play Voice</Label>
-          </div>
-        </div>
-
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-6 pb-4">
             {messages.map((m, index) => (
@@ -187,9 +128,6 @@ export default function AiTrainerPage() {
 
         <div className="p-4 bg-background border-t border-white/10">
           <form onSubmit={handleSubmit} className="flex items-center gap-2">
-            <Button type="button" size="icon" variant={isListening ? "destructive" : "outline"} onClick={handleStartListening} disabled={isLoading}>
-              <Mic />
-            </Button>
             <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask your coach anything..." className="flex-1" autoComplete="off" />
             <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
               <Send />
