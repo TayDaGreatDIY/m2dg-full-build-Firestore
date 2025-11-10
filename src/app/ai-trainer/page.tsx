@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -9,7 +8,7 @@ import { Send, Bot, Loader2, Mic, Speaker, Play, Pause } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { useUser, useFirestore } from '@/firebase';
-import { doc, setDoc, collection, query, orderBy, limit, serverTimestamp, onSnapshot, Unsubscribe, addDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, query, orderBy, limit, serverTimestamp, onSnapshot, Unsubscribe, addDoc, increment } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { aiTrainerFlow, Emotion } from '@/ai/flows/ai-trainer-flow';
 import { useToast } from '@/hooks/use-toast';
