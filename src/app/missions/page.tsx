@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -96,7 +97,7 @@ export default function MissionsPage() {
     try {
       // In a real app, you'd have a dialog to get playerInput
       const playerInput = "I want to improve my 3-point shooting.";
-      const newMissionsData = await missionsFlow({ userId: user.uid, playerInput });
+      await missionsFlow({ userId: user.uid, playerInput });
       // The flow now handles creating the docs, so we just need to let the useCollection hook refresh
       toast({
         title: "New Missions Generated!",

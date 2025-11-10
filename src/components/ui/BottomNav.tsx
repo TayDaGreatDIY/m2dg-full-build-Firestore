@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Newspaper, Map, Trophy, MessageSquare, ShieldCheck, Bell, ShoppingBag, BrainCircuit, Bot } from "lucide-react";
+import { Home, Newspaper, Map, Trophy, MessageSquare, ShieldCheck, Bell, ShoppingBag, BrainCircuit, Bot, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser, useCollection, useMemoFirebase, useFirestore } from "@/firebase";
 import type { Notification } from "@/lib/types";
@@ -13,7 +13,7 @@ import { collection, query, where } from "firebase/firestore";
 const navItems = [
   { href: "/dashboard", icon: Home, label: "Home" },
   { href: "/courts", icon: Map, label: "Courts" },
-  { href: "/challenges", icon: ShieldCheck, label: "Missions" },
+  { href: "/missions", icon: Target, label: "Missions" },
   { href: "/ai-trainer", icon: Bot, label: "AI Coach" },
   { href: "/messages", icon: MessageSquare, label: "DMs" },
 ];

@@ -153,12 +153,18 @@ export type AdminLog = {
     timestamp: Timestamp;
 };
 
-export type AITrainerAnalytics = {
-    lastEmotion: string;
-    lastUpdated: Timestamp;
-    hypeCount?: number;
-    calmCount?: number;
-    focusedCount?: number;
-    encouragingCount?: number;
-    neutralCount?: number;
-};
+export type Mission = {
+    id: string;
+    title: string;
+    description: string;
+    xpValue: number;
+    status: 'in-progress' | 'complete';
+}
+
+export type Goal = {
+    id: string;
+    title: string;
+    status: 'in-progress' | 'complete' | 'expired';
+    createdAt: Timestamp;
+    missions: Mission[];
+}

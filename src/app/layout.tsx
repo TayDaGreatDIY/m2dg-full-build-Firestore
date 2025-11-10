@@ -5,7 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import BottomNav from '@/components/ui/BottomNav';
-import { Home, Map, ShieldCheck, Trophy, MessageSquare, Bell, ShoppingBag, BrainCircuit, Bot, Shield } from 'lucide-react';
+import { Home, Map, ShieldCheck, Trophy, MessageSquare, Bell, ShoppingBag, BrainCircuit, Bot, Shield, Target } from 'lucide-react';
 import AdminSidebarMenu from '@/components/ui/AdminSidebarMenu';
 
 export const metadata: Metadata = {
@@ -16,7 +16,8 @@ export const metadata: Metadata = {
 const navItems = [
   { href: "/dashboard", icon: Home, label: "Home" },
   { href: "/courts", icon: Map, label: "Courts" },
-  { href: "/challenges", icon: ShieldCheck, label: "Missions" },
+  { href: "/missions", icon: Target, label: "Missions" },
+  { href: "/challenges", icon: ShieldCheck, label: "Challenges" },
   { href: "/leaderboard", icon: Trophy, label: "Leaders" },
   { href: "/messages", icon: MessageSquare, label: "Messages" },
   { href: "/locker-room", icon: ShoppingBag, label: "Locker Room"},
