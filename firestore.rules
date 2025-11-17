@@ -15,8 +15,10 @@ service cloud.firestore {
     // CONVERSATIONS
     // -------------------
     match /conversations/{cid} {
-      // Each conversation document MUST contain: memberIds: array<string>, createdAt, lastMessage (optional)
-      allow read, update, delete: if request.auth != null && request.auth.uid in resource.data.memberIds;
+      // Allow reading a list of conversations ONLY if the query includes the user's UID.
+      allow list: if request.auth != null && request.query.where.get('memberIds').hasAny([request.auth.uid]);
+      // Allow get/update/delete on a specific conversation if the user is a member.
+      allow get, update, delete: if request.auth != null && request.auth.uid in resource.data.memberIds;
 
       // Creation: requester must be in the memberIds and memberIds must be a small array (e.g., 2–10)
       allow create: if request.auth != null
