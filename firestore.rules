@@ -16,7 +16,8 @@ service cloud.firestore {
     // -------------------
     match /conversations/{cid} {
       // Allow reading a list of conversations ONLY if the query includes the user's UID.
-      allow list: if request.auth != null && request.query.where.get('memberIds').hasAny([request.auth.uid]);
+      allow list: if request.auth != null && request.query.where[0][2][0] == request.auth.uid;
+      
       // Allow get/update/delete on a specific conversation if the user is a member.
       allow get, update, delete: if request.auth != null && request.auth.uid in resource.data.memberIds;
 
