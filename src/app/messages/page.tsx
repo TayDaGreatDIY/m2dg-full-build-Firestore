@@ -1,3 +1,4 @@
+
 "use client";
 
 import { DesktopHeader } from "@/components/ui/TopNav";
@@ -18,6 +19,7 @@ export default function MessagesPage() {
   
   const conversationsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
+    // This is the critical fix: adding the 'where' clause to match security rules.
     return query(collection(firestore, "conversations"), where("memberIds", "array-contains", user.uid));
   }, [user, firestore]);
     
