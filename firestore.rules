@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -56,7 +57,14 @@ service cloud.firestore {
     // -------------------
     match /courts/{courtId} {
       allow read: if true;
-      allow write: if request.auth != null; // Allow writes for authenticated users (e.g., check-ins)
+      // Allow create/update for admin, but check-ins are handled by cloud function
+      allow create, update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+     match /courts/{courtId}/checkins/{checkinId} {
+      // Check-ins are created via a trusted backend (Cloud Function), so client writes are denied.
+      // Reads can be allowed for authenticated users to see who is at a court.
+      allow read: if request.auth != null;
+      allow write: if false; 
     }
      match /courts/{courtId}/{document=**} {
       allow read, write: if request.auth != null;
@@ -78,7 +86,6 @@ service cloud.firestore {
         allow read: if true;
         allow create, update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
-
 
     // -------------------
     // ADMIN LOGS (Admin only)

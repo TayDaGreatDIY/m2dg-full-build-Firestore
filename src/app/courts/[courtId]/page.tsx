@@ -1,18 +1,18 @@
+
 'use client';
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { Loader2, LocateFixed, WifiOff, CheckCircle, RefreshCw, ShieldAlert, Badge, ArrowLeft } from 'lucide-react';
+import { Loader2, LocateFixed, WifiOff, CheckCircle, RefreshCw, ShieldAlert, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Court, User as AppUser } from '@/lib/types';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-
 const MAX_ACCEPTABLE_ACCURACY = 80; // meters
-const MIN_SAMPLES = 3; 
+const MIN_SAMPLES = 3;
 const EXTRA_RADIUS_MARGIN = 100; // meters
 
 type PositionSample = {
@@ -52,14 +52,15 @@ export default function CourtPage() {
   useEffect(() => {
     if (!authUser || !firestore) return;
     const userRef = doc(firestore, 'users', authUser.uid);
-    getDoc(userRef).then((docSnap) => {
-      if (docSnap.exists()) {
-        const userData = docSnap.data() as AppUser;
-        if (userData.lastCheckIn) {
-          setLastCheckInTime(userData.lastCheckIn);
+    const unsubscribe = onSnapshot(userRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const userData = docSnap.data() as AppUser;
+            if (userData.lastCheckIn) {
+                setLastCheckInTime(userData.lastCheckIn);
+            }
         }
-      }
     });
+    return () => unsubscribe();
   }, [authUser, firestore]);
 
   const startWatchingPosition = () => {
@@ -68,12 +69,15 @@ export default function CourtPage() {
     setPositionSamples([]);
     setCurrentAccuracy(null);
 
-    // Clear any existing watch
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
     }
     
-    if (!court) return;
+    if (!court || !court.latitude || !court.longitude) {
+        setLocationStatus('error');
+        setLocationError("Court location data is missing.");
+        return;
+    }
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
@@ -115,7 +119,6 @@ export default function CourtPage() {
     );
   };
   
-  // Start watching on mount if court is loaded
   useEffect(() => {
     if(court) {
       startWatchingPosition();
@@ -141,7 +144,7 @@ export default function CourtPage() {
   const hasEnoughSamples = positionSamples.length >= MIN_SAMPLES;
 
   const handleCheckIn = async () => {
-    if (!authUser || !firestore || !court) {
+    if (!authUser || !court) {
       toast({ variant: 'destructive', title: 'You must be logged in to check in.' });
       return;
     }
@@ -156,26 +159,23 @@ export default function CourtPage() {
 
     setIsCheckingIn(true);
     try {
-        const checkinFunctionUrl = 'https://checkin-qhmdrry7ca-uc.a.run.app';
-        const response = await fetch(checkinFunctionUrl, {
+        const response = await fetch('/api/checkin', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 userId: authUser.uid,
                 courtId: court.id,
-                samples: positionSamples,
             }),
         });
 
         const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'Check-in validation failed.');
-
-        const newCheckInTimestamp = Timestamp.now();
-        setLastCheckInTime(newCheckInTimestamp);
+        if (!response.ok) {
+            throw new Error(result.error || 'An unknown error occurred during check-in.');
+        }
 
         toast({ 
             title: "✅ Checked in!", 
-            description: `+25 XP earned at ${court?.name}. ${result.message || ''}`,
+            description: `+25 XP earned at ${court?.name}.`,
             className: "bg-green-600/20 border-green-500/50 text-white"
         });
 
