@@ -57,12 +57,12 @@ service cloud.firestore {
     // -------------------
     match /courts/{courtId} {
       allow read: if true;
-      // Allow create/update for admin, but check-ins are handled by cloud function
+      // Allow create/update for admin
       allow create, update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
      match /courts/{courtId}/checkins/{checkinId} {
-      // Check-ins are created via a trusted backend (Cloud Function), so client writes are denied.
-      // Reads can be allowed for authenticated users to see who is at a court.
+      // Allow authenticated users to create their own check-ins via the API route.
+      // Deny direct client writes to enforce server-side logic (cooldowns, XP, etc.).
       allow read: if request.auth != null;
       allow write: if false; 
     }
@@ -95,3 +95,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

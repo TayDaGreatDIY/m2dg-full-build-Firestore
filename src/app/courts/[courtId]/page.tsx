@@ -2,7 +2,7 @@
 'use client';
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, getDoc, Timestamp } from 'firebase/firestore';
+import { doc, Timestamp, onSnapshot } from 'firebase/firestore';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Loader2, LocateFixed, WifiOff, CheckCircle, RefreshCw, ShieldAlert, ArrowLeft } from 'lucide-react';
@@ -167,15 +167,15 @@ export default function CourtPage() {
                 courtId: court.id,
             }),
         });
-
+        
         const result = await response.json();
         if (!response.ok) {
-            throw new Error(result.error || 'An unknown error occurred during check-in.');
+            throw new Error(result.error || 'An unknown server error occurred.');
         }
 
         toast({ 
             title: "✅ Checked in!", 
-            description: `+25 XP earned at ${court?.name}.`,
+            description: `+${result.xpGained || 25} XP earned at ${court?.name}.`,
             className: "bg-green-600/20 border-green-500/50 text-white"
         });
 
@@ -306,3 +306,5 @@ export default function CourtPage() {
     </div>
   );
 }
+
+    
