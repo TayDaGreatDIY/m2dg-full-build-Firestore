@@ -8,10 +8,10 @@ import type { Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Paperclip, Send, Loader2 } from "lucide-react";
+import { Paperclip, Send, Loader2, ShieldAlert } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { ShieldAlert } from "lucide-react";
+
 
 type ChatThreadProps = {
   conversationId: string;
@@ -56,10 +56,10 @@ export default function ChatThread({ conversationId }: ChatThreadProps) {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === "" || !user) return;
+    if (newMessage.trim() === "" || !user || !firestore) return;
 
     try {
-        await sendMessage(conversationId, user.uid, newMessage.trim());
+        await sendMessage(firestore, conversationId, user.uid, newMessage.trim());
         setNewMessage("");
     } catch (error: any) {
       console.error("Error sending message:", error);

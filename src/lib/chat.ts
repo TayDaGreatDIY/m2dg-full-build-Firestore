@@ -11,7 +11,6 @@ export async function openOrCreateConversation(db: Firestore, currentUid: string
   const conversationsRef = collection(db, 'conversations');
 
   // Create a query that finds conversations where both users are participants.
-  // This is a more efficient query if you expect users to have many conversations.
   const q = query(
     conversationsRef,
     where('memberIds', 'array-contains', currentUid)
@@ -39,18 +38,15 @@ export async function openOrCreateConversation(db: Firestore, currentUid: string
 
 /**
  * Sends a message in a conversation and updates the lastMessage field atomically.
+ * @param db The Firestore instance.
  * @param conversationId The ID of the conversation.
  * @param senderId The ID of the message sender.
  * @param text The content of the message.
  */
-export async function sendMessage(conversationId: string, senderId: string, text: string): Promise<void> {
-  if (!conversationId || !senderId || !text.trim()) {
+export async function sendMessage(db: Firestore, conversationId: string, senderId: string, text: string): Promise<void> {
+  if (!db || !conversationId || !senderId || !text.trim()) {
     throw new Error("Invalid arguments for sendMessage");
   }
-
-  // NOTE: This assumes 'db' is exported from a central Firebase config file.
-  // You may need to import `db` from `@/firebase` or pass it as an argument.
-  const { firestore: db } = await import('@/firebase');
 
   const conversationRef = doc(db, 'conversations', conversationId);
   const messagesRef = collection(conversationRef, 'messages');

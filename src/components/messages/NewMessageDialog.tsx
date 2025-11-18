@@ -33,7 +33,7 @@ export default function NewMessageDialog({ isOpen, onOpenChange }: NewMessageDia
   const { data: users, isLoading } = useCollection<AppUser>(usersQuery);
 
   const handleUserSelect = async (selectedUser: AppUser) => {
-    if (!currentUser || isCreatingChat) return;
+    if (!currentUser || !firestore || isCreatingChat) return;
 
     setIsCreatingChat(true);
 

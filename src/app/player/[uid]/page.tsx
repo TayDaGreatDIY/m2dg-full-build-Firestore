@@ -59,12 +59,12 @@ export default function PlayerProfilePage() {
 
 
   const handleSendMessage = async () => {
-    if (!currentUser || !player || isCreatingChat) return;
+    if (!currentUser || !player || !firestore || isCreatingChat) return;
 
     setIsCreatingChat(true);
 
     try {
-      const conversationId = await openOrCreateConversation(currentUser.uid, player.uid);
+      const conversationId = await openOrCreateConversation(firestore, currentUser.uid, player.uid);
       router.push(`/messages/${conversationId}`);
     } catch (error) {
       console.error("Error creating or finding chat:", error);
