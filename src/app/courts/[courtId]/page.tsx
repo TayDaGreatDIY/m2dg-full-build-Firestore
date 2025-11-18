@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Court, User as AppUser } from '@/lib/types';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 
 const MAX_ACCEPTABLE_ACCURACY = 80; // meters
 const MIN_SAMPLES = 3;
@@ -306,5 +307,3 @@ export default function CourtPage() {
     </div>
   );
 }
-
-    
