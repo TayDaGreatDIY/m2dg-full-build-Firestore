@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 
 import { DesktopHeader } from "@/components/ui/TopNav";
 import { Button } from "@/components/ui/button";
@@ -7,10 +6,11 @@ import ConversationRow from "@/components/messages/ConversationRow";
 import { useUser, useCollection, useMemoFirebase, useFirestore } from "@/firebase";
 import type { Conversation, User as AppUser } from "@/lib/types";
 import { collection, query, where, getDoc, doc } from "firebase/firestore";
-import { Plus } from "lucide-react";
+import { Plus, ShieldAlert } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect } from "react";
 import NewMessageDialog from "@/components/messages/NewMessageDialog";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function MessagesPage() {
   const { user } = useUser();
@@ -19,11 +19,10 @@ export default function MessagesPage() {
   
   const conversationsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    // This is the critical fix: adding the 'where' clause to match security rules.
     return query(collection(firestore, "conversations"), where("memberIds", "array-contains", user.uid));
   }, [user, firestore]);
     
-  const { data: rawConversations, isLoading } = useCollection<Conversation>(conversationsQuery);
+  const { data: rawConversations, isLoading, error } = useCollection<Conversation>(conversationsQuery);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [enrichLoading, setEnrichLoading] = useState(true);
 
@@ -87,22 +86,30 @@ export default function MessagesPage() {
               </div>
               
               {pageLoading ? (
-              <div className="space-y-3">
-                  <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-20 w-full" />
-              </div>
+                <div className="space-y-3">
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                </div>
+              ) : error ? (
+                <Alert variant="destructive">
+                  <ShieldAlert className="h-4 w-4" />
+                  <AlertTitle>Permissions Error</AlertTitle>
+                  <AlertDescription>
+                    Could not load conversations. Please check your network connection and security rules.
+                  </AlertDescription>
+                </Alert>
               ) : hasConversations ? (
-              <div className="space-y-3">
-                  {conversations.map((convo) => (
-                    <ConversationRow key={convo.id} conversation={convo} />
-                  ))}
-              </div>
+                <div className="space-y-3">
+                    {conversations.map((convo) => (
+                      <ConversationRow key={convo.id} conversation={convo} />
+                    ))}
+                </div>
               ) : (
-              <div className="text-center py-20 bg-[var(--color-bg-card)] rounded-card border border-white/10">
-                  <h3 className="font-bold font-headline text-lg">No conversations yet</h3>
-                  <p className="text-sm text-white/50 mt-1">Start a chat with other ballers.</p>
-              </div>
+                <div className="text-center py-20 bg-[var(--color-bg-card)] rounded-card border border-white/10">
+                    <h3 className="font-bold font-headline text-lg">No conversations yet</h3>
+                    <p className="text-sm text-white/50 mt-1">Start a chat with other ballers.</p>
+                </div>
               )}
           </div>
         </main>

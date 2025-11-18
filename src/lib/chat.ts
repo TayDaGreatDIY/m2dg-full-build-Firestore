@@ -1,22 +1,24 @@
-import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, runTransaction, DocumentReference } from 'firebase/firestore';
-import { firestore as db } from '@/firebase';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, runTransaction, type Firestore } from 'firebase/firestore';
 
 /**
  * Finds an existing 1-on-1 conversation or creates a new one.
+ * @param db The Firestore instance.
  * @param currentUid The ID of the currently authenticated user.
  * @param otherUid The ID of the other user in the conversation.
  * @returns A promise that resolves with the conversation ID.
  */
-export async function openOrCreateConversation(currentUid: string, otherUid: string): Promise<string> {
+export async function openOrCreateConversation(db: Firestore, currentUid: string, otherUid: string): Promise<string> {
   const conversationsRef = collection(db, 'conversations');
 
-  // Query for existing conversations involving both users
+  // Create a query that finds conversations where both users are participants.
+  // This is a more efficient query if you expect users to have many conversations.
   const q = query(
     conversationsRef,
     where('memberIds', 'array-contains', currentUid)
   );
   
   const querySnapshot = await getDocs(q);
+  // Client-side filter to find the exact 1-on-1 chat
   const existingConversation = querySnapshot.docs.find(doc => {
     const data = doc.data();
     return data.memberIds.includes(otherUid) && data.memberIds.length === 2;
@@ -29,7 +31,7 @@ export async function openOrCreateConversation(currentUid: string, otherUid: str
     const newConversationRef = await addDoc(conversationsRef, {
       memberIds: [currentUid, otherUid],
       createdAt: serverTimestamp(),
-      lastMessage: null,
+      lastMessage: null, // Initialize lastMessage as null
     });
     return newConversationRef.id;
   }
@@ -46,12 +48,16 @@ export async function sendMessage(conversationId: string, senderId: string, text
     throw new Error("Invalid arguments for sendMessage");
   }
 
+  // NOTE: This assumes 'db' is exported from a central Firebase config file.
+  // You may need to import `db` from `@/firebase` or pass it as an argument.
+  const { firestore: db } = await import('@/firebase');
+
   const conversationRef = doc(db, 'conversations', conversationId);
   const messagesRef = collection(conversationRef, 'messages');
   const newMessageRef = doc(messagesRef); // Create a new doc ref for the message
 
   await runTransaction(db, async (transaction) => {
-    const sentAt = serverTimestamp();
+    const sentAt = serverTimestamp(); // Use a single timestamp for consistency
 
     // 1. Set the new message document
     transaction.set(newMessageRef, {

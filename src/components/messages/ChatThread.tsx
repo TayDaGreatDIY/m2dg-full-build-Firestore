@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useState, useRef, useEffect } from "react";
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
@@ -10,25 +10,29 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Paperclip, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { ShieldAlert } from "lucide-react";
 
 type ChatThreadProps = {
   conversationId: string;
-  otherUserId?: string;
 };
 
-export default function ChatThread({ conversationId, otherUserId }: ChatThreadProps) {
+export default function ChatThread({ conversationId }: ChatThreadProps) {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!conversationId || !firestore) return;
 
+    setLoading(true);
+    setError(null);
     const messagesQuery = query(
       collection(firestore, 'conversations', conversationId, 'messages'),
       orderBy('sentAt', 'asc')
@@ -37,14 +41,14 @@ export default function ChatThread({ conversationId, otherUserId }: ChatThreadPr
       const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
       setMessages(msgs);
       setLoading(false);
-    }, (error) => {
-        console.error("Error fetching messages:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not load messages.'});
+    }, (err) => {
+        console.error("Error fetching messages:", err);
+        setError('Could not load messages. You may not have permission to view this chat.');
         setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [conversationId, firestore, toast]);
+  }, [conversationId, firestore]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -57,14 +61,26 @@ export default function ChatThread({ conversationId, otherUserId }: ChatThreadPr
     try {
         await sendMessage(conversationId, user.uid, newMessage.trim());
         setNewMessage("");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending message:", error);
-      toast({ variant: 'destructive', title: 'Send Failed', description: 'Could not send your message.'});
+      toast({ variant: 'destructive', title: 'Send Failed', description: error.message || 'Could not send your message.'});
     }
   };
   
   if (loading) {
     return <div className="flex-1 flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
+  }
+
+  if (error) {
+     return (
+      <div className="flex-1 flex items-center justify-center p-4">
+        <Alert variant="destructive">
+          <ShieldAlert className="h-4 w-4" />
+          <AlertTitle>Error Loading Chat</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    );
   }
 
   return (

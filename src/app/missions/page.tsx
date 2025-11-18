@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -7,16 +6,21 @@ import { collection, doc, onSnapshot, orderBy, query, updateDoc, where, getDocs,
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { DesktopHeader } from '@/components/ui/TopNav';
-import { Loader2, Trophy, CheckCircle2 } from 'lucide-react';
+import { Loader2, Trophy, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Mission } from '@/lib/types';
-
+import { missionsFlow } from '@/ai/flows/missions-flow';
+import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function MissionsPage() {
   const { user } = useUser();
   const db = useFirestore();
+  const { toast } = useToast();
   const [missions, setMissions] = useState<Mission[]|null>(null);
   const [loadingId, setLoadingId] = useState<string|null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [flowError, setFlowError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !db) return;
@@ -47,9 +51,33 @@ export default function MissionsPage() {
     try {
       const ref = doc(db, 'users', user.uid, 'goals', m.goalId, 'missions', m.id);
       await updateDoc(ref, { status: 'completed', completedAt: Date.now() });
-      // xp counters doc - increment handled by cloud function if setup, otherwise client-side
     } finally {
       setLoadingId(null);
+    }
+  };
+
+  const handleGenerateMissions = async () => {
+    if (!user) return;
+    const topic = prompt("What's your main basketball goal right now? (e.g., Improve my 3-point shot, get a quicker handle)") || "Improve jump shot";
+    const focus = "shooting"; // Simplified for now
+    
+    setIsGenerating(true);
+    setFlowError(null);
+
+    try {
+      const res = await missionsFlow({
+        userId: user.uid,
+        goal: { title: topic, focusArea: focus },
+      });
+      console.log("🔥 Mission Flow Response:", res);
+      toast({ title: '✅ New Goal Created!', description: 'Your new missions are ready.' });
+    } catch (err: any) {
+      console.error("Missions flow error:", err);
+      const errorMessage = "Coach M2DG is temporarily unavailable and could not generate new missions. Please try again later.";
+      setFlowError(errorMessage);
+      toast({ variant: 'destructive', title: 'Mission Generation Failed', description: err.message || "Could not create a goal."});
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -64,35 +92,20 @@ export default function MissionsPage() {
             </div>
              <Button
                 className="bg-orange hover:bg-orange/80 text-black"
-                onClick={async () => {
-                    if (!user) return;
-                    const topic = prompt("What goal do you want to work on? (e.g., Improve jump shot)") || "Improve jump shot";
-                    const focus = "shooting"; // Simplified for now
-                    try {
-                    const res = await fetch("/api/missions-flow", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                        userId: user.uid,
-                        goal: { title: topic, focusArea: focus },
-                        }),
-                    });
-                    const data = await res.json();
-                    console.log("🔥 Mission Flow Response:", data);
-                    if (res.ok) {
-                        alert(`✅ New goal created! Refreshing your missions...`);
-                    } else {
-                        throw new Error(data.error || "Failed to create goal.");
-                    }
-                    } catch (err: any) {
-                    console.error(err);
-                    alert(`⚠️ Could not create a goal: ${err.message}`);
-                    }
-                }}
+                onClick={handleGenerateMissions}
+                disabled={isGenerating}
                 >
-                ➕ Generate New Goal
+                {isGenerating ? <Loader2 className="h-4 w-4 animate-spin"/> : '➕ Generate New Goal'}
             </Button>
         </div>
+
+        {flowError && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>AI Coach Error</AlertTitle>
+            <AlertDescription>{flowError}</AlertDescription>
+          </Alert>
+        )}
 
         <div className="space-y-4">
           {missions === null && <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-white/50" /></div>}
@@ -127,7 +140,7 @@ export default function MissionsPage() {
             </div>
           ))}
 
-          {missions && missions.length===0 && (
+          {missions && missions.length===0 && !isGenerating && (
             <div className="text-center text-white/60 py-10">No missions yet. Generate a new goal to get started!</div>
           )}
         </div>

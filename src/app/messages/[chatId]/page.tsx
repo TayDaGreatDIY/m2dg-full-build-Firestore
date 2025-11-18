@@ -1,14 +1,15 @@
-"use client";
+'use client';
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, notFound } from "next/navigation";
 import { useState, useEffect } from "react";
 import ChatThread from "@/components/messages/ChatThread";
 import UserAvatar from "@/components/ui/UserAvatar";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { doc } from "firebase/firestore";
 import { useFirestore, useUser, useDoc, useMemoFirebase } from "@/firebase";
 import type { Conversation, User as AppUser } from "@/lib/types";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function ChatPage() {
   const params = useParams();
@@ -21,7 +22,7 @@ export default function ChatPage() {
     return doc(firestore, 'conversations', conversationId);
   }, [firestore, conversationId]);
 
-  const { data: conversation, isLoading: isConversationLoading } = useDoc<Conversation>(conversationDocRef);
+  const { data: conversation, isLoading: isConversationLoading, error: conversationError } = useDoc<Conversation>(conversationDocRef);
 
   const otherUserId = conversation?.memberIds.find(id => id !== authUser?.uid);
   
@@ -38,8 +39,23 @@ export default function ChatPage() {
     return <div className="flex h-screen max-w-md mx-auto items-center justify-center"><Loader2 className="animate-spin text-primary" size={32} /></div>;
   }
   
-  if (!conversation || !otherUser) {
-    return <div className="flex h-screen max-w-md mx-auto items-center justify-center"><p>Conversation not found.</p></div>;
+  // This is a critical check for security. If the user is not a member, they can't be here.
+  if (conversationError || !conversation || !conversation.memberIds.includes(authUser?.uid || '')) {
+    return (
+       <div className="flex h-screen max-w-md mx-auto items-center justify-center p-4">
+         <Alert variant="destructive">
+          <ShieldAlert className="h-4 w-4" />
+          <AlertTitle>Access Denied</AlertTitle>
+          <AlertDescription>
+            You do not have permission to view this conversation, or it does not exist.
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  if (!otherUser) {
+     return <div className="flex h-screen max-w-md mx-auto items-center justify-center"><p>Conversation participant not found.</p></div>;
   }
 
   return (
@@ -53,7 +69,7 @@ export default function ChatPage() {
           <p className="font-bold text-sm">@{otherUser.username}</p>
         </div>
       </header>
-      <ChatThread conversationId={conversationId} otherUserId={otherUserId} />
+      <ChatThread conversationId={conversationId} />
     </div>
   );
 }

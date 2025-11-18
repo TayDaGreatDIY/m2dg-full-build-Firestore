@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -38,15 +38,19 @@ export default function NewMessageDialog({ isOpen, onOpenChange }: NewMessageDia
     setIsCreatingChat(true);
 
     try {
-      const conversationId = await openOrCreateConversation(currentUser.uid, selectedUser.uid);
-      router.push(`/messages/${conversationId}`);
-      onOpenChange(false);
-    } catch (error) {
+      const conversationId = await openOrCreateConversation(firestore, currentUser.uid, selectedUser.uid);
+      if (conversationId) {
+        router.push(`/messages/${conversationId}`);
+        onOpenChange(false);
+      } else {
+        throw new Error("Failed to get conversation ID.");
+      }
+    } catch (error: any) {
       console.error("Error opening or creating chat:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not start a new conversation.",
+        description: error.message || "Could not start a new conversation. Check your permissions.",
       });
     } finally {
       setIsCreatingChat(false);

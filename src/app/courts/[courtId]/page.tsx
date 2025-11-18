@@ -1,14 +1,14 @@
-
 'use client';
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { useParams } from 'next/navigation';
-import { doc, updateDoc, increment, getDoc, Timestamp, writeBatch, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { courts as staticCourts } from '@/lib/courtData';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useParams, useRouter } from 'next/navigation';
+import { doc, getDoc, Timestamp } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { Loader2, LocateFixed, WifiOff, CheckCircle, RefreshCw, ShieldAlert, Badge } from 'lucide-react';
+import { Loader2, LocateFixed, WifiOff, CheckCircle, RefreshCw, ShieldAlert, Badge, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import type { Court, User as AppUser, CheckIn } from '@/lib/types';
+import type { Court, User as AppUser } from '@/lib/types';
+import Link from 'next/link';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
 const MAX_ACCEPTABLE_ACCURACY = 80; // meters
@@ -24,10 +24,10 @@ type PositionSample = {
 
 export default function CourtPage() {
   const params = useParams();
+  const router = useRouter();
   const { courtId } = params;
   const { toast } = useToast();
 
-  const [court, setCourt] = useState<Court | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
   const [isWithinRadius, setIsWithinRadius] = useState(false);
   const [lastCheckInTime, setLastCheckInTime] = useState<Timestamp | null>(null);
@@ -41,11 +41,12 @@ export default function CourtPage() {
   const firestore = useFirestore();
   const watchIdRef = useRef<number | null>(null);
 
-  // Load court details from static data
-  useEffect(() => {
-    const found = staticCourts.find((c) => c.id === courtId);
-    setCourt(found || null);
-  }, [courtId]);
+  const courtDocRef = useMemoFirebase(() => {
+    if (!firestore || typeof courtId !== 'string') return null;
+    return doc(firestore, 'courts', courtId);
+  }, [firestore, courtId]);
+  
+  const { data: court, isLoading: isCourtLoading, error: courtError } = useDoc<Court>(courtDocRef);
 
   // Load user's last check-in time from Firestore
   useEffect(() => {
@@ -77,20 +78,17 @@ export default function CourtPage() {
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude, accuracy } = pos.coords;
-        console.log("📍 GPS Update:", { latitude, longitude, accuracy });
-        console.log("🎯 Court Coords:", { lat: court.latitude, lon: court.longitude });
-        
         setCurrentAccuracy(accuracy);
         
         if (accuracy <= MAX_ACCEPTABLE_ACCURACY) {
-          setPositionSamples(prev => [...prev, {latitude, longitude, accuracy, timestamp: pos.timestamp}].slice(-10)); // Keep last 10
+          setPositionSamples(prev => [...prev, {latitude, longitude, accuracy, timestamp: pos.timestamp}].slice(-10));
         }
 
         const dist = getDistanceFromLatLonInMeters(
           latitude,
           longitude,
-          court.latitude,
-          court.longitude
+          court.latitude!,
+          court.longitude!
         );
 
         setDistance(dist);
@@ -105,28 +103,24 @@ export default function CourtPage() {
         }
       },
       (err) => {
-        console.error("GPS Error:", err);
         let message = "Could not get location. Please enable GPS and allow location access.";
         if (err.code === err.PERMISSION_DENIED) {
             message = "Precise location access is required. Please enable it in your browser settings.";
         }
         setLocationError(message);
         setLocationStatus('error');
-        toast({
-            variant: 'destructive',
-            title: 'GPS Error',
-            description: message
-        });
+        toast({ variant: 'destructive', title: 'GPS Error', description: message });
       },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
     );
   };
   
-  // Start watching on mount
+  // Start watching on mount if court is loaded
   useEffect(() => {
-    startWatchingPosition();
+    if(court) {
+      startWatchingPosition();
+    }
     
-    // Cleanup on component unmount
     return () => {
         if(watchIdRef.current !== null) {
             navigator.geolocation.clearWatch(watchIdRef.current);
@@ -136,7 +130,6 @@ export default function CourtPage() {
   }, [court]);
 
 
-  // 🕓 Prevent abuse: cooldown check
   const canCheckIn = useMemo(() => {
     if (!lastCheckInTime) return true;
     const now = new Date();
@@ -145,10 +138,8 @@ export default function CourtPage() {
     return diffHours >= 2;
   }, [lastCheckInTime]);
 
-  // Check if enough valid samples are collected
   const hasEnoughSamples = positionSamples.length >= MIN_SAMPLES;
 
-  // ✅ Handle check-in
   const handleCheckIn = async () => {
     if (!authUser || !firestore || !court) {
       toast({ variant: 'destructive', title: 'You must be logged in to check in.' });
@@ -166,7 +157,6 @@ export default function CourtPage() {
     setIsCheckingIn(true);
     try {
         const checkinFunctionUrl = 'https://checkin-qhmdrry7ca-uc.a.run.app';
-
         const response = await fetch(checkinFunctionUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -178,10 +168,7 @@ export default function CourtPage() {
         });
 
         const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.error || 'Check-in validation failed.');
-        }
+        if (!response.ok) throw new Error(result.error || 'Check-in validation failed.');
 
         const newCheckInTimestamp = Timestamp.now();
         setLastCheckInTime(newCheckInTimestamp);
@@ -200,8 +187,8 @@ export default function CourtPage() {
     }
   };
 
-  // 🧮 Haversine formula
   function getDistanceFromLatLonInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
+    if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return Infinity;
     const R = 6371e3; // Earth radius in meters
     const dLat = (lat2 - lat1) * (Math.PI / 180);
     const dLon = (lon2 - lon1) * (Math.PI / 180);
@@ -215,7 +202,34 @@ export default function CourtPage() {
     return R * c;
   }
 
-  const renderContent = () => {
+  if (isCourtLoading) {
+     return (
+       <div className="flex justify-center items-center h-screen">
+          <Loader2 className="animate-spin text-primary" size={32} />
+      </div>
+     );
+  }
+
+  if (courtError || !court) {
+    return (
+      <div className="p-6 text-white min-h-screen bg-background flex items-center justify-center">
+        <div className="max-w-md mx-auto w-full space-y-4 text-center">
+            <Alert variant="destructive">
+              <ShieldAlert className="h-4 w-4" />
+              <AlertTitle>Court Unavailable</AlertTitle>
+              <AlertDescription>
+                This court could not be loaded. It may have been removed or you may not have permission to view it.
+              </AlertDescription>
+            </Alert>
+            <Button asChild variant="outline">
+              <Link href="/courts"><ArrowLeft size={16}/> Back to Courts</Link>
+            </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const renderLocationContent = () => {
     if (locationStatus === 'loading') {
        return (
          <div className="flex flex-col items-center justify-center h-64 gap-4">
@@ -229,18 +243,12 @@ export default function CourtPage() {
        return (
           <div className="text-center bg-destructive/10 p-4 rounded-lg space-y-4">
              <WifiOff className="mx-auto text-destructive" size={24} />
-            <p className="text-red-400 text-sm mt-2">
-                {locationError}
-            </p>
-            <Button onClick={startWatchingPosition} variant="outline" size="sm">
-                <RefreshCw size={14}/>
-                Retry
-            </Button>
+            <p className="text-red-400 text-sm mt-2">{locationError}</p>
+            <Button onClick={startWatchingPosition} variant="outline" size="sm"><RefreshCw size={14}/> Retry</Button>
           </div>
        );
     }
 
-    // Success state
     const readyForCheckin = isWithinRadius && hasEnoughSamples && canCheckIn;
     let buttonText = "📍 Move Closer to Check In";
     if (isCheckingIn) buttonText = "Verifying...";
@@ -265,11 +273,7 @@ export default function CourtPage() {
                 onClick={handleCheckIn}
                 disabled={!readyForCheckin || isCheckingIn}
                 size="lg"
-                className={`w-full font-bold transition-all text-base ${
-                    readyForCheckin
-                    ? 'bg-green-600 text-white hover:bg-green-500'
-                    : 'bg-muted text-white/50 cursor-not-allowed'
-                }`}
+                className={`w-full font-bold transition-all text-base ${readyForCheckin ? 'bg-green-600 text-white hover:bg-green-500' : 'bg-muted text-white/50 cursor-not-allowed'}`}
             >
                 {isCheckingIn ? <Loader2 className="animate-spin" /> : (readyForCheckin ? <CheckCircle size={20}/> : <LocateFixed size={20}/>)}
                 {buttonText}
@@ -286,19 +290,11 @@ export default function CourtPage() {
   return (
     <div className="p-6 text-white min-h-screen bg-background">
       <div className="max-w-md mx-auto bg-card p-6 rounded-lg shadow-lg">
-          {court ? (
-               <>
-                <h1 className="text-2xl font-bold font-headline text-gold text-center mb-1">
-                    {court.name}
-                </h1>
-                <p className="text-white/70 text-center mb-6">{court.address}</p>
-                {renderContent()}
-               </>
-          ) : (
-             <div className="flex justify-center items-center h-64">
-                <Loader2 className="animate-spin text-primary" size={32} />
-            </div>
-          )}
+           <>
+            <h1 className="text-2xl font-bold font-headline text-gold text-center mb-1">{court.name}</h1>
+            <p className="text-white/70 text-center mb-6">{court.address}</p>
+            {renderLocationContent()}
+           </>
       </div>
 
        <div className="max-w-md mx-auto mt-4 p-2 bg-black/20 rounded-md text-xs text-white/40 font-mono">
@@ -310,6 +306,3 @@ export default function CourtPage() {
     </div>
   );
 }
-
-
-    

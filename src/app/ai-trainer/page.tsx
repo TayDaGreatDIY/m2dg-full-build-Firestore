@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -6,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { DesktopHeader } from '@/components/ui/TopNav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send, Bot, Loader2 } from 'lucide-react';
+import { Send, Bot, Loader2, AlertTriangle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
@@ -14,6 +13,7 @@ import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp,
 import { cn } from '@/lib/utils';
 import { aiTrainerFlow } from '@/ai/flows/ai-trainer-flow';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -32,6 +32,7 @@ export default function AiTrainerPage() {
   const [autoPlayVoice, setAutoPlayVoice] = useState(false);
   const [xp, setXp] = useState(0);
   const [streak, setStreak] = useState(0);
+  const [flowError, setFlowError] = useState<string | null>(null);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -46,7 +47,6 @@ export default function AiTrainerPage() {
     }
   };
 
-  // 🧩 Fetch mission progress counters
   useEffect(() => {
     if (!authUser || !firestore) return;
     const ref = doc(firestore, "users", authUser.uid, "counters", "main");
@@ -60,7 +60,6 @@ export default function AiTrainerPage() {
     return () => unsubscribe();
   }, [authUser, firestore]);
 
-  // 🧩 Load messages
   useEffect(() => {
     if (!authUser || !firestore) return;
     const memoryRef = collection(firestore, "aiTrainerMemory", authUser.uid, "messages");
@@ -84,7 +83,7 @@ export default function AiTrainerPage() {
       toast({
         variant: 'destructive',
         title: 'Error loading chat',
-        description: 'Could not load chat history.',
+        description: 'Could not load chat history. Check your connection or permissions.',
       });
     });
 
@@ -101,7 +100,6 @@ export default function AiTrainerPage() {
     addDoc(messageRef, { ...message, timestamp: serverTimestamp() });
   };
 
-  // 🧩 Voice Output Function
   const speakMessage = (text: string) => {
     if (!autoPlayVoice) return;
     const utterance = new SpeechSynthesisUtterance(text);
@@ -111,12 +109,12 @@ export default function AiTrainerPage() {
     speechSynthesis.speak(utterance);
   };
 
-  // 🧩 Handle Send
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     const currentInput = input.trim();
     if (!currentInput || isLoading || !authUser) return;
 
+    setFlowError(null);
     const userMessage: Message = { role: 'user', content: currentInput };
     setMessages(prev => [...prev, userMessage]);
     saveMessage(userMessage);
@@ -131,16 +129,17 @@ export default function AiTrainerPage() {
       setMessages(prev => [...prev, assistantMessage]);
       saveMessage(assistantMessage);
 
-      // 🔊 Speak reply if enabled
       speakMessage(reply);
 
-    } catch (error) {
-      console.error('AI Trainer error:', error);
-      const errorMessage: Message = {
+    } catch (error: any) {
+      console.error('AI Trainer flow error:', error);
+      const errorMessage = 'Coach M2DG is temporarily unavailable. Please try again later.';
+      setFlowError(errorMessage);
+      const errorResponseMessage: Message = {
         role: 'assistant',
-        content: '⚠️ I’m having trouble connecting right now. Try again shortly.',
+        content: `⚠️ ${errorMessage}`,
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => [...prev, errorResponseMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -160,6 +159,16 @@ export default function AiTrainerPage() {
             Auto-play Voice 🔈 
           </label>
         </div>
+
+        {flowError && (
+          <div className="p-4">
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Connection Error</AlertTitle>
+              <AlertDescription>{flowError}</AlertDescription>
+            </Alert>
+          </div>
+        )}
 
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-6 pb-4">
@@ -208,7 +217,6 @@ export default function AiTrainerPage() {
           </div>
         </ScrollArea>
         
-        {/* 🧩 Mission Progress Widget */}
         {authUser && (
           <div className="p-4 border-t border-white/10 bg-background/60 flex items-center justify-between">
             <div className="text-white/80 text-sm">
