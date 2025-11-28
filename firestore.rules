@@ -5,7 +5,6 @@ service cloud.firestore {
 
     // ALLOW USERS TO MANAGE THEIR OWN USER DATA
     match /users/{uid} {
-      // Publicly readable, but only the owner can write.
       allow read: if true;
       allow write: if request.auth != null && request.auth.uid == uid;
 
@@ -13,6 +12,11 @@ service cloud.firestore {
       match /{subcollection}/{docId} {
         allow read, write: if request.auth != null && request.auth.uid == uid;
       }
+    }
+    
+    // AI TRAINER MEMORY
+    match /aiTrainerMemory/{uid}/{doc=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
     // COURTS
@@ -22,9 +26,9 @@ service cloud.firestore {
     }
 
     // COURT CHECK-INS
-    match /courts/{courtId}/checkins/{uid} {
+    match /courts/{courtId}/checkins/{checkinId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null && request.auth.uid == checkinId;
     }
 
     // LEADERBOARD
@@ -34,12 +38,14 @@ service cloud.firestore {
     }
 
     // MESSAGING SYSTEM
-    match /messages/{conversationId} {
-      allow read, write: if request.auth != null;
+    match /conversations/{conversationId} {
+        // User can only read/write conversations they are a member of.
+        allow read, write: if request.auth != null && request.auth.uid in resource.data.memberIds;
 
-      match /threads/{threadId} {
-        allow read, write: if request.auth != null;
-      }
+        match /messages/{messageId} {
+            // User can only read/write messages in conversations they are a member of.
+            allow read, write: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.memberIds;
+        }
     }
   }
 }
