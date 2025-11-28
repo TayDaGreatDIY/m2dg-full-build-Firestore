@@ -10,7 +10,7 @@ import { googleAI } from '@genkit-ai/google-genai';
 import * as admin from 'firebase-admin';
 
 if (!admin.apps.length) {
-    admin.initializeApp();
+  admin.initializeApp();
 }
 const db = admin.firestore();
 
