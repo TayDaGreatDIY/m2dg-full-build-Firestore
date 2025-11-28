@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
     const userRef = db.collection('users').doc(userId);
     const courtRef = db.collection('courts').doc(courtId);
-    // Use the user's ID as the check-in ID to easily find/update it if needed, or just create a new one.
+    // Use a new doc ref for each check-in to keep a history
     const checkinRef = courtRef.collection('checkins').doc(); 
 
     const userDoc = await userRef.get();
@@ -33,10 +33,11 @@ export async function POST(request: Request) {
     // --- Transaction to ensure atomicity ---
     const xpGained = 25;
     const { newStreak } = await db.runTransaction(async (transaction) => {
-        const userData = (await transaction.get(userRef)).data();
-        if (!userData) {
+        const userSnap = await transaction.get(userRef);
+        if (!userSnap.exists) {
             throw new Error("User data could not be retrieved inside transaction.");
         }
+        const userData = userSnap.data();
         
         let currentStreak = userData?.trainingStreak || 0;
         const lastCheckIn = userData?.lastCheckIn?.toDate();
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
             user: { // Denormalize user data for easier display in feeds
                 uid: userId,
                 displayName: userData?.displayName || 'Unknown Player',
-                avatarURL: userData?.avatarURL || '',
+                photoURL: userData?.photoURL || '',
             }
         });
 
@@ -96,5 +97,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: error.message || 'An unknown error occurred.' }, { status: 500 });
   }
 }
-
-    
