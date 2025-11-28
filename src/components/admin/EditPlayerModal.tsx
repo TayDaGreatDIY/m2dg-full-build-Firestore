@@ -4,283 +4,126 @@
 import { useState, useEffect } from "react";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { useFirestore } from "@/firebase";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useToast } from "@/hooks/use-toast";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
-
+import { useToast } from "@/hooks/use-toast";
 import type { UserWithId } from "@/lib/types";
 
-// ---------------- Schema ----------------
-
-const playerSchema = z.object({
-  displayName: z.string().min(2, "Display name is required"),
-  username: z.string().min(2, "Username is required"),
-  xp: z.coerce.number().min(0),
-  trainingStreak: z.coerce.number().min(0),
-  winStreak: z.coerce.number().min(0),
-  role: z.enum(["player", "coach", "moderator", "admin"]),
-  status: z.enum(["active", "suspended"]),
-});
-
-// ---------------- Player Edit Dialog ----------------
-
 interface EditPlayerModalProps {
-  player: UserWithId;
-  isOpen: boolean;
+  open: boolean;
+  player: UserWithId | null;
   onClose: () => void;
-  onFormSubmit: (action: string, id: string) => void;
+  onUpdated: () => void; // callback for parent to refresh
 }
 
 export default function EditPlayerModal({
+  open,
   player,
-  isOpen,
   onClose,
-  onFormSubmit,
+  onUpdated,
 }: EditPlayerModalProps) {
-  const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const firestore = useFirestore();
+  const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof playerSchema>>({
-    resolver: zodResolver(playerSchema),
-    defaultValues: {
-        displayName: "",
-        username: "",
-        xp: 0,
-        trainingStreak: 0,
-        winStreak: 0,
-        role: "player",
-        status: "active",
+  const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
+  const [xp, setXp] = useState(0);
+  const [role, setRole] = useState("player");
+  const [status, setStatus] = useState("active");
+  const [loading, setLoading] = useState(false);
+
+  // load player data into form state when the modal is opened or player changes
+  useEffect(() => {
+    if (player) {
+      setDisplayName(player.displayName ?? "");
+      setUsername(player.username ?? "");
+      setXp(player.xp ?? 0);
+      setRole(player.role ?? "player");
+      setStatus(player.status ?? "active");
     }
-  });
+  }, [player, open]);
 
-   useEffect(() => {
-    if (player && isOpen) {
-      form.reset({
-        displayName: player.displayName ?? "",
-        username: player.username ?? "",
-        xp: player.xp ?? 0,
-        trainingStreak: player.trainingStreak ?? 0,
-        winStreak: player.winStreak ?? 0,
-        role: player.role ?? "player",
-        status: player.status ?? "active",
-      });
-    }
-  }, [player, isOpen, form]);
+  if (!open || !player) return null;
 
-  const onSubmit = async (values: z.infer<typeof playerSchema>) => {
-    setIsSubmitting(true);
+  async function save() {
+    if (!firestore) {
+        toast({variant: "destructive", title: "Database connection lost."})
+        return;
+    };
 
+    setLoading(true);
     try {
-      if (!player?.id) throw new Error("Player ID is missing.");
-      if (!firestore) throw new Error("Firestore is not available.");
+      const ref = doc(firestore, "users", player.id);
 
-      const playerRef = doc(firestore, "users", player.id);
-      await updateDoc(playerRef, {
-        ...values,
+      await updateDoc(ref, {
+        displayName,
+        username,
+        xp: Number(xp),
+        role,
+        status,
         updatedAt: serverTimestamp(),
       });
+      
+      toast({title: "Player Updated", description: `${displayName}'s profile has been saved.`});
 
-      toast({
-        title: "✅ Player Updated Successfully!",
-        description: `${values.displayName}'s profile changes were saved.`,
-      });
-
-      onFormSubmit("update", player.id);
+      onUpdated();
       onClose();
-    } catch (error: any) {
-        let description = "An error occurred while saving player data.";
-        if (error.code === 'permission-denied') {
-            description = "Your account does not have admin rights for this update.";
-        }
-       console.error("Error updating player:", error);
-      toast({
-        variant: "destructive",
-        title: "Error Updating Player",
-        description: description,
-      });
+    } catch (err) {
+      console.error("Failed to update player:", err);
+      toast({variant: "destructive", title: "Update Failed", description: "Could not save player changes."});
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
-  };
-
-  if (!player) return null;
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-card border-white/10">
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-4"
-          >
-            <DialogHeader>
-              <DialogTitle>Edit Player: {player.displayName}</DialogTitle>
-              <DialogDescription>
-                  Update player stats and details below.
-              </DialogDescription>
-            </DialogHeader>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm">
+      <div className="bg-card rounded-lg p-6 w-full max-w-md space-y-4 shadow-xl border border-white/10 text-white">
+        <h2 className="text-xl font-bold font-headline">Edit: {player.displayName}</h2>
 
-            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
-              <FormField
-                control={form.control}
-                name="displayName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Display Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="xp"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>XP</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="trainingStreak"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Training Streak</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="winStreak"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Win Streak</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Role</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="player">Player</SelectItem>
-                        <SelectItem value="coach">Coach</SelectItem>
-                        <SelectItem value="moderator">Moderator</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="suspended">Suspended</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto p-1">
+            <div className="space-y-2">
+                <label className="text-sm font-medium text-white/70">Display Name</label>
+                <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
             </div>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={onClose}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  "Save Changes"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+            <div className="space-y-2">
+                <label className="text-sm font-medium text-white/70">Username</label>
+                <Input value={username} onChange={(e) => setUsername(e.target.value)} />
+            </div>
+
+            <div className="space-y-2">
+                <label className="text-sm font-medium text-white/70">XP</label>
+                <Input type="number" value={xp} onChange={(e) => setXp(Number(e.target.value))} />
+            </div>
+            <div className="space-y-2">
+                <label className="text-sm font-medium text-white/70">Role</label>
+                <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-base">
+                    <option value="player">Player</option>
+                    <option value="admin">Admin</option>
+                    <option value="moderator">Moderator</option>
+                </select>
+            </div>
+             <div className="space-y-2">
+                <label className="text-sm font-medium text-white/70">Status</label>
+                <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-base">
+                    <option value="active">Active</option>
+                    <option value="suspended">Suspended</option>
+                </select>
+            </div>
+        </div>
+
+
+        <div className="flex gap-2 pt-3">
+          <Button className="w-full" disabled={loading} onClick={save}>
+            {loading ? <Loader2 className="animate-spin" /> : "Save Changes"}
+          </Button>
+          <Button variant="outline" className="w-full" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
-

@@ -62,43 +62,44 @@ export default function AdminPlayers() {
   const firestore = useFirestore();
   const { user: adminUser } = useAdminUser();
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<UserWithId | null>(null);
+  
+  // A simple way to trigger a re-fetch or re-render in child components if needed
+  const [updateCounter, setUpdateCounter] = useState(0);
 
   const usersQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, "users"));
-  }, [firestore]);
+  }, [firestore, updateCounter]);
 
   const { data: players, isLoading } = useCollection<UserWithId>(usersQuery);
 
   const handleEditClick = (player: UserWithId) => {
     setSelectedPlayer(player);
+    setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
+    setIsModalOpen(false);
     setSelectedPlayer(null);
   };
-
-  const handleFormSubmit = (action: string, id: string) => {
-    logAdminAction(
-        firestore,
-        adminUser,
-        action,
-        "player",
-        id
-      );
+  
+  const handlePlayerUpdated = (playerId: string) => {
+      logAdminAction(firestore, adminUser, 'update', 'player', playerId);
+      // Increment counter to force a re-render/re-fetch of the user list if necessary
+      setUpdateCounter(prev => prev + 1);
   }
+
 
   return (
     <>
-    {selectedPlayer && (
-        <EditPlayerModal
-            player={selectedPlayer}
-            isOpen={!!selectedPlayer}
-            onClose={handleCloseModal}
-            onFormSubmit={handleFormSubmit}
-        />
-    )}
+    <EditPlayerModal
+        player={selectedPlayer}
+        open={isModalOpen}
+        onClose={handleCloseModal}
+        onUpdated={() => handlePlayerUpdated(selectedPlayer!.id)}
+    />
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
