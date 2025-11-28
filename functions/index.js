@@ -8,13 +8,13 @@ const db = admin.firestore();
 exports.onMissionComplete = functions.firestore
   .document("users/{uid}/goals/{goalId}/missions/{missionId}")
   .onUpdate(async (change, context) => {
-    const { uid, missionId, goalId } = context.params;
+    const { uid, goalId, missionId } = context.params;
 
     const before = change.before.data();
     const after = change.after.data();
 
-    // Only proceed when mission goes from incomplete → complete
-    if (before.status === 'completed' || after.status !== 'completed') {
+    // Mission must transition from not-completed → completed
+    if (before?.status === "completed" || after?.status !== "completed") {
       return null;
     }
 
@@ -23,41 +23,41 @@ exports.onMissionComplete = functions.firestore
       const userSnap = await userRef.get();
 
       if (!userSnap.exists) {
-        console.error("User document not found:", uid);
+        console.error("User document missing:", uid);
         return null;
       }
 
-      const rewardXp = after.xp || 10; // default XP for missions
+      const rewardXp = after.xp || 10; // Use 'xp' from the mission doc, fallback to 10
 
-      // Update XP + add missionId to completedMissions array
+      // Update user XP + record completed mission
       await userRef.update({
         xp: admin.firestore.FieldValue.increment(rewardXp),
         completedMissions: admin.firestore.FieldValue.arrayUnion(missionId),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // Create notification document
-      const notifRef = db
+      // Create a notification for the user
+      await db
         .collection("users")
         .doc(uid)
         .collection("notifications")
-        .doc();
+        .add({
+          type: "mission_complete",
+          missionId,
+          goalId,
+          xpGained: rewardXp,
+          title: "🏅 Mission Complete!",
+          body: `You completed "${after.title}" and earned ${rewardXp} XP!`,
+          link: '/missions',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          read: false,
+        });
 
-      await notifRef.set({
-        type: "mission_complete",
-        missionId,
-        goalId,
-        xpGained: rewardXp,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        read: false,
-        title: "🏅 Mission Complete!",
-        body: `You completed "${after.title}" and earned ${rewardXp} XP!`,
-        link: `/missions`,
-      });
+      console.log(
+        `Mission ${missionId} under goal ${goalId} completed for user ${uid}`
+      );
 
-      console.log(`Mission ${missionId} completed successfully for user ${uid}`);
       return null;
-
     } catch (err) {
       console.error("onMissionComplete error:", err);
       return null;
