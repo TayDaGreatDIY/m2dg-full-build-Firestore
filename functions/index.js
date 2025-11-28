@@ -24,7 +24,12 @@ exports.onMissionComplete = functions.firestore
   .onUpdate(async (change, ctx) => {
     const before = change.before.data();
     const after = change.after.data();
-    if (before.status === 'completed' || after.status !== 'completed') return;
+
+    // Ensure function runs only when mission is newly completed
+    if (before.status === 'completed' || after.status !== 'completed') {
+        functions.logger.log(`Mission status not newly completed for ${ctx.params.missionId}. Exiting.`);
+        return null;
+    }
 
     const { uid, goalId, missionId } = ctx.params;
     const xp = after.xp || 0;
@@ -33,88 +38,108 @@ exports.onMissionComplete = functions.firestore
     const countersRef = db.collection('users').doc(uid).collection('counters').doc('main');
     const notificationsRef = db.collection('users').doc(uid).collection('notifications');
 
-    await db.runTransaction(async (trx) => {
-      const userDoc = await trx.get(userRef);
-      const countersDoc = await trx.get(countersRef);
-      if (!userDoc.exists) return;
+    try {
+        await db.runTransaction(async (trx) => {
+            const userDoc = await trx.get(userRef);
+            const countersDoc = await trx.get(countersRef);
+            if (!userDoc.exists) {
+                throw new Error(`User document ${uid} not found.`);
+            }
 
-      const userData = userDoc.data();
-      const countersData = countersDoc.exists ? countersDoc.data() : { xp: 0, missionsCompleted: 0, lastCompletionDate: 0, streak: 0 };
-      
-      const newTotalXP = (countersData.xp || 0) + xp;
-      const newMissionsCompleted = (countersData.missionsCompleted || 0) + 1;
+            const userData = userDoc.data();
+            // Initialize counters if they don't exist
+            const countersData = countersDoc.exists ? countersDoc.data() : { xp: 0, missionsCompleted: 0, lastCompletionDate: null, streak: 0 };
+            
+            const newTotalXP = (countersData.xp || 0) + xp;
+            const newMissionsCompleted = (countersData.missionsCompleted || 0) + 1;
 
-      // --- Streak Logic ---
-      const today = new Date(); today.setHours(0,0,0,0);
-      const last = countersData.lastCompletionDate ? new Date(countersData.lastCompletionDate) : null;
-      let newStreak = countersData.streak || 0;
-      if (!last) {
-        newStreak = 1;
-      } else {
-        const lastDate = new Date(last); lastDate.setHours(0,0,0,0);
-        const diffTime = today.getTime() - lastDate.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-        if (diffDays === 1) newStreak++;
-        else if (diffDays > 1) newStreak = 1;
-      }
+            // --- Streak Logic ---
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const lastCompletion = countersData.lastCompletionDate ? countersData.lastCompletionDate.toDate() : null;
+            let newStreak = countersData.streak || 0;
 
-      // --- Badge Unlocking Logic ---
-      const userBadges = userData.badges || [];
-      const newBadges = [];
+            if (!lastCompletion) {
+                newStreak = 1;
+            } else {
+                const lastDate = new Date(lastCompletion);
+                lastDate.setHours(0, 0, 0, 0);
+                const diffTime = today.getTime() - lastDate.getTime();
+                const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (diffDays === 1) {
+                    newStreak++;
+                } else if (diffDays > 1) {
+                    newStreak = 1; // Reset streak
+                }
+                // If diffDays is 0, streak stays the same (multiple completions in one day)
+            }
 
-      if (newTotalXP >= 100 && !userBadges.find(b => b.id === 'xp-100')) newBadges.push(badges['xp-100']);
-      if (newTotalXP >= 500 && !userBadges.find(b => b.id === 'xp-500')) newBadges.push(badges['xp-500']);
-      if (newTotalXP >= 1000 && !userBadges.find(b => b.id === 'xp-1000')) newBadges.push(badges['xp-1000']);
-      if (newMissionsCompleted >= 10 && !userBadges.find(b => b.id === 'missions-10')) newBadges.push(badges['missions-10']);
-      if (newMissionsCompleted >= 50 && !userBadges.find(b => b.id === 'missions-50')) newBadges.push(badges['missions-50']);
-      if (newStreak >= 7 && !userBadges.find(b => b.id === 'streak-7')) newBadges.push(badges['streak-7']);
-      if (newStreak >= 30 && !userBadges.find(b => b.id === 'streak-30')) newBadges.push(badges['streak-30']);
+            // --- Badge Unlocking Logic ---
+            const userBadges = userData.badges || [];
+            const userBadgeIds = new Set(userBadges.map(b => b.id));
+            const newBadges = [];
 
-      // --- Database Updates ---
-      // 1. Update counters subcollection
-      trx.set(countersRef, {
-        xp: newTotalXP,
-        missionsCompleted: newMissionsCompleted,
-        lastCompletionDate: Date.now(),
-        streak: newStreak
-      }, { merge: true });
+            if (newTotalXP >= 100 && !userBadgeIds.has('xp-100')) newBadges.push(badges['xp-100']);
+            if (newTotalXP >= 500 && !userBadgeIds.has('xp-500')) newBadges.push(badges['xp-500']);
+            if (newTotalXP >= 1000 && !userBadgeIds.has('xp-1000')) newBadges.push(badges['xp-1000']);
+            if (newMissionsCompleted >= 10 && !userBadgeIds.has('missions-10')) newBadges.push(badges['missions-10']);
+            if (newMissionsCompleted >= 50 && !userBadgeIds.has('missions-50')) newBadges.push(badges['missions-50']);
+            if (newStreak >= 7 && !userBadgeIds.has('streak-7')) newBadges.push(badges['streak-7']);
+            if (newStreak >= 30 && !userBadgeIds.has('streak-30')) newBadges.push(badges['streak-30']);
 
-      // 2. Update main user document with xp, streak, and any new badges
-      const userUpdatePayload = {
-          xp: newTotalXP,
-          trainingStreak: newStreak,
-      };
-      if (newBadges.length > 0) {
-        userUpdatePayload.badges = admin.firestore.FieldValue.arrayUnion(...newBadges);
-      }
-      trx.update(userRef, userUpdatePayload);
+            // --- Database Updates ---
+            // 1. Update counters subcollection
+            trx.set(countersRef, {
+                xp: newTotalXP,
+                missionsCompleted: newMissionsCompleted,
+                lastCompletionDate: admin.firestore.Timestamp.now(), // Use Admin SDK Timestamp
+                streak: newStreak
+            }, { merge: true });
 
-      // 3. Create notifications (outside of transaction)
-      const missionCompletionNotif = {
-        title: "Mission Complete! ✅",
-        body: `You just earned +${xp} XP for completing: ${after.title}`,
-        type: "mission",
-        read: false,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        link: `/missions`,
-        meta: { goalId, missionId, xp },
-      };
-      notificationsRef.add(missionCompletionNotif);
+            // 2. Update main user document with xp, streak, and any new badges
+            const userUpdatePayload = {
+                xp: newTotalXP,
+                trainingStreak: newStreak,
+            };
+            if (newBadges.length > 0) {
+                // Correct syntax for arrayUnion
+                userUpdatePayload.badges = admin.firestore.FieldValue.arrayUnion(...newBadges);
+            }
+            trx.update(userRef, userUpdatePayload);
 
-      newBadges.forEach(badge => {
-        const badgeNotif = {
-            title: "Badge Unlocked! 🏆",
-            body: `You earned the "${badge.name}" badge. Keep up the grind!`,
-            type: "badge",
-            read: false,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            link: `/player/${uid}`,
-            meta: { badgeId: badge.id },
-        };
-        notificationsRef.add(badgeNotif);
-      });
-    });
-  });
+            // 3. Create notifications (outside of transaction for atomicity)
+            const missionCompletionNotif = {
+                title: "Mission Complete! ✅",
+                body: `You just earned +${xp} XP for completing: ${after.title}`,
+                type: "mission",
+                read: false,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                link: `/missions`,
+                meta: { goalId, missionId, xp },
+            };
+            await notificationsRef.add(missionCompletionNotif);
+
+            for (const badge of newBadges) {
+                const badgeNotif = {
+                    title: "Badge Unlocked! 🏆",
+                    body: `You earned the "${badge.name}" badge. Keep up the grind!`,
+                    type: "badge",
+                    read: false,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    link: `/player/${uid}`,
+                    meta: { badgeId: badge.id },
+                };
+                await notificationsRef.add(badgeNotif);
+            }
+        });
+        functions.logger.log(`Successfully processed mission completion for user ${uid}.`);
+
+    } catch (error) {
+        functions.logger.error(`Error in onMissionComplete for user ${uid}:`, error);
+    }
+    return null; // End the function
+});
 
 exports.onMissionCreated = functions.firestore
     .document("users/{uid}/goals/{goalId}/missions/{missionId}")
@@ -237,3 +262,5 @@ exports.onNewNotification = onNewNotification;
 
 const { onMissionComplete: onMissionCompleteV2 } = require('./onMissionComplete');
 exports.onMissionCompleteV2 = onMissionCompleteV2;
+
+    
