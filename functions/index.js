@@ -6,15 +6,15 @@ admin.initializeApp();
 const db = admin.firestore();
 
 exports.onMissionComplete = functions.firestore
-  .document("aiTrainerMemory/{uid}/missions/{missionId}")
+  .document("users/{uid}/goals/{goalId}/missions/{missionId}")
   .onUpdate(async (change, context) => {
-    const { uid, missionId } = context.params;
+    const { uid, missionId, goalId } = context.params;
 
     const before = change.before.data();
     const after = change.after.data();
 
     // Only proceed when mission goes from incomplete → complete
-    if (before.completed === true || after.completed !== true) {
+    if (before.status === 'completed' || after.status !== 'completed') {
       return null;
     }
 
@@ -27,9 +27,7 @@ exports.onMissionComplete = functions.firestore
         return null;
       }
 
-      const user = userSnap.data();
-
-      const rewardXp = after.rewardXp || 5; // default XP for missions
+      const rewardXp = after.xp || 10; // default XP for missions
 
       // Update XP + add missionId to completedMissions array
       await userRef.update({
@@ -48,10 +46,13 @@ exports.onMissionComplete = functions.firestore
       await notifRef.set({
         type: "mission_complete",
         missionId,
+        goalId,
         xpGained: rewardXp,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         read: false,
-        message: `You completed "${after.title}" and earned ${rewardXp} XP!`,
+        title: "🏅 Mission Complete!",
+        body: `You completed "${after.title}" and earned ${rewardXp} XP!`,
+        link: `/missions`,
       });
 
       console.log(`Mission ${missionId} completed successfully for user ${uid}`);
