@@ -32,7 +32,7 @@ export default function CourtPage() {
   const [distance, setDistance] = useState<number | null>(null);
   const [isWithinRadius, setIsWithinRadius] = useState(false);
   const [lastCheckInTime, setLastCheckInTime] = useState<Timestamp | null>(null);
-  const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('loading');
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [positionSamples, setPositionSamples] = useState<PositionSample[]>([]);
@@ -280,30 +280,42 @@ export default function CourtPage() {
                 {buttonText}
             </Button>
 
-            <Button onClick={startWatchingPosition} variant="outline" size="sm" className="w-full">
-                <RefreshCw size={14} className={locationStatus === 'loading' ? 'animate-spin' : ''}/>
-                Refresh My Location
-            </Button>
+            <div className="text-center">
+                <Button onClick={startWatchingPosition} variant="link" size="sm" className="text-white/50">
+                    <RefreshCw size={14} className={locationStatus === 'loading' ? 'animate-spin' : ''}/>
+                    Refresh My Location
+                </Button>
+            </div>
         </div>
     );
   };
 
   return (
-    <div className="p-6 text-white min-h-screen bg-background">
-      <div className="max-w-md mx-auto bg-card p-6 rounded-lg shadow-lg">
-           <>
-            <h1 className="text-2xl font-bold font-headline text-gold text-center mb-1">{court.name}</h1>
-            <p className="text-white/70 text-center mb-6">{court.address}</p>
-            {renderLocationContent()}
-           </>
-      </div>
-
-       <div className="max-w-md mx-auto mt-4 p-2 bg-black/20 rounded-md text-xs text-white/40 font-mono">
-            <p>Debug Info:</p>
-            <p>Accuracy: {currentAccuracy ? `${currentAccuracy.toFixed(2)}m` : 'N/A'}</p>
-            <p>Samples: {positionSamples.length}/{MIN_SAMPLES}</p>
-            <p>Coords: {positionSamples.length > 0 ? `${positionSamples.at(-1)?.latitude.toFixed(4)}, ${positionSamples.at(-1)?.longitude.toFixed(4)}` : 'N/A'}</p>
-       </div>
+    <div className="p-4 text-white min-h-screen bg-background flex flex-col items-center">
+        <header className="w-full max-w-md flex items-center justify-between pb-4">
+            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                <ArrowLeft size={20} />
+            </Button>
+            <div className="flex-1 text-center">
+                <h1 className="text-xl font-bold font-headline text-gold">{court.name}</h1>
+                <p className="text-sm text-white/70">{court.address}</p>
+            </div>
+            <div className="w-10"></div>
+        </header>
+        <main className="w-full max-w-md">
+            <div className="bg-card p-6 rounded-lg shadow-lg">
+                {renderLocationContent()}
+            </div>
+             <div className="max-w-md mx-auto mt-4 p-2 bg-black/20 rounded-md text-xs text-white/40 font-mono">
+                <p>Debug Info:</p>
+                <p>Accuracy: {currentAccuracy ? `${currentAccuracy.toFixed(2)}m` : 'N/A'}</p>
+                <p>Samples: {positionSamples.length}/{MIN_SAMPLES}</p>
+                <p>Coords: {positionSamples.length > 0 ? `${positionSamples.at(-1)?.latitude.toFixed(4)}, ${positionSamples.at(-1)?.longitude.toFixed(4)}` : 'N/A'}</p>
+            </div>
+        </main>
     </div>
   );
 }
+
+
+    
