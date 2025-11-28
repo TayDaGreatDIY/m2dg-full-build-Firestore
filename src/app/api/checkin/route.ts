@@ -37,10 +37,10 @@ export async function POST(request: Request) {
         if (!userSnap.exists) {
             throw new Error("User data could not be retrieved inside transaction.");
         }
-        const userData = userSnap.data();
+        const userData = userSnap.data()!;
         
-        let currentStreak = userData?.trainingStreak || 0;
-        const lastCheckIn = userData?.lastCheckIn?.toDate();
+        let currentStreak = userData.trainingStreak || 0;
+        const lastCheckIn = userData.lastCheckIn?.toDate();
         const now = new Date();
         
         // Cooldown check: prevent check-in if last one was less than 2 hours ago
@@ -82,8 +82,8 @@ export async function POST(request: Request) {
             timestamp: FieldValue.serverTimestamp(),
             user: { // Denormalize user data for easier display in feeds
                 uid: userId,
-                displayName: userData?.displayName || 'Unknown Player',
-                photoURL: userData?.photoURL || '',
+                displayName: userData.displayName || 'Unknown Player',
+                photoURL: userData.photoURL || '',
             }
         });
 
