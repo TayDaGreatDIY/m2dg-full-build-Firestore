@@ -18,7 +18,6 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  VisuallyHidden,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -72,6 +71,15 @@ export default function EditPlayerModal({
 
   const form = useForm<z.infer<typeof playerSchema>>({
     resolver: zodResolver(playerSchema),
+    defaultValues: {
+        displayName: "",
+        username: "",
+        xp: 0,
+        trainingStreak: 0,
+        winStreak: 0,
+        role: "player",
+        status: "active",
+    }
   });
 
    useEffect(() => {
@@ -90,10 +98,10 @@ export default function EditPlayerModal({
 
   const onSubmit = async (values: z.infer<typeof playerSchema>) => {
     setIsSubmitting(true);
-    console.log("Submitting player update:", values);
 
     try {
       if (!player?.id) throw new Error("Player ID is missing.");
+      if (!firestore) throw new Error("Firestore is not available.");
 
       const playerRef = doc(firestore, "users", player.id);
       await updateDoc(playerRef, {
@@ -106,7 +114,7 @@ export default function EditPlayerModal({
         description: `${values.displayName}'s profile changes were saved.`,
       });
 
-      if (onFormSubmit) onFormSubmit("update", player.id);
+      onFormSubmit("update", player.id);
       onClose();
     } catch (error: any) {
         let description = "An error occurred while saving player data.";
@@ -275,3 +283,4 @@ export default function EditPlayerModal({
     </Dialog>
   );
 }
+
