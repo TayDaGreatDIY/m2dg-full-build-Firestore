@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
@@ -156,7 +157,7 @@ export default function PlayerProfilePage() {
             <StatTile label="XP Points" value={player.xp} />
             <StatTile label="Training Streak" value={`${player.trainingStreak}d`} />
             <StatTile label="Win Streak" value={`${player.winStreak}W`} />
-            <StatTile label="Home Court" value={player.homeCourt} />
+            <StatTile label="Home Court" value={player.homeCourt || 'Not Set'} />
           </div>
 
           {player.badges && player.badges.length > 0 && (
@@ -224,3 +225,5 @@ export default function PlayerProfilePage() {
     </div>
   );
 }
+
+    
